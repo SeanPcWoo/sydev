@@ -27,7 +27,14 @@
 5. 用户可以通过 --help 查看所有命令的帮助信息和使用示例
 6. 用户可以使用清晰的子命令结构（workspace、project、device）完成操作
 
-**Plans**: TBD
+**Plans:** 5 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — 项目 Monorepo 基础架构和环境健康检查
+- [ ] 01-02-PLAN.md — 核心业务逻辑（配置管理器、rl 包装器、进度报告器）
+- [ ] 01-03-PLAN.md — CLI 框架和帮助系统
+- [ ] 01-04-PLAN.md — 交互式向导（workspace、project、device）
+- [ ] 01-05-PLAN.md — Shell 命令自动补全
 
 ---
 
@@ -71,7 +78,7 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. CLI 核心功能 | 0/0 | Not started | - |
+| 1. CLI 核心功能 | 0/5 | Planning complete | - |
 | 2. 模板与配置系统 | 0/0 | Not started | - |
 | 3. Web UI 与批量操作 | 0/0 | Not started | - |
 
