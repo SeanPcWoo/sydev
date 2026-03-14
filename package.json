@@ -7,6 +7,8 @@
     "node": ">=24.14.0"
   },
   "scripts": {
+    "dev:cli": "pnpm --filter @openswitch/cli dev",
+    "build": "pnpm -r build",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "type-check": "tsc --noEmit"
