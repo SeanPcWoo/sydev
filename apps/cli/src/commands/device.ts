@@ -13,8 +13,8 @@ deviceCommand
   .command('add')
   .description('添加目标设备（交互式向导）')
   .action(async () => {
-    console.log(chalk.blue('ℹ device add 命令将在 Plan 04 实现交互式向导'));
-    console.log(chalk.dim('当前为命令结构骨架'));
+    const { runDeviceWizard } = await import('../wizards/device-wizard.js');
+    await runDeviceWizard();
   });
 
 deviceCommand

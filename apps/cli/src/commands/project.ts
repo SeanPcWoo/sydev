@@ -13,8 +13,8 @@ projectCommand
   .command('create')
   .description('创建新项目（交互式向导）')
   .action(async () => {
-    console.log(chalk.blue('ℹ project create 命令将在 Plan 04 实现交互式向导'));
-    console.log(chalk.dim('当前为命令结构骨架'));
+    const { runProjectWizard } = await import('../wizards/project-wizard.js');
+    await runProjectWizard();
   });
 
 projectCommand
