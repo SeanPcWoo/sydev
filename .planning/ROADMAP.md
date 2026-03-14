@@ -27,7 +27,7 @@
 5. 用户可以通过 --help 查看所有命令的帮助信息和使用示例
 6. 用户可以使用清晰的子命令结构（workspace、project、device）完成操作
 
-**Plans:** 5 plans
+**Plans:** 2/5 plans executed
 
 Plans:
 - [ ] 01-01-PLAN.md — 项目 Monorepo 基础架构和环境健康检查
@@ -78,7 +78,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. CLI 核心功能 | 0/5 | Planning complete | - |
+| 1. CLI 核心功能 | 2/5 | In Progress|  |
 | 2. 模板与配置系统 | 0/0 | Not started | - |
 | 3. Web UI 与批量操作 | 0/0 | Not started | - |
 
