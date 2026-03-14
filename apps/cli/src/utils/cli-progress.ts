@@ -1,6 +1,6 @@
 import ora, { Ora } from 'ora';
 import chalk from 'chalk';
-import { ProgressReporter } from '@openswitch/core';
+import { ProgressReporter } from '@sydev/core';
 
 export function createCliProgressReporter(): ProgressReporter {
   const reporter = new ProgressReporter();

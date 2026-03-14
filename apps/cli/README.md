@@ -16,19 +16,19 @@ npm link  # 全局安装
 
 ```bash
 # 查看帮助
-openswitch --help
+sydev --help
 
 # 查看版本
-openswitch --version
+sydev --version
 
 # 初始化 workspace
-openswitch workspace init
+sydev workspace init
 
 # 创建项目
-openswitch project create
+sydev project create
 
 # 添加设备
-openswitch device add
+sydev device add
 ```
 
 ### 命令自动补全
@@ -38,7 +38,7 @@ OpenSwitch 支持 Bash 和 Zsh 的命令自动补全。
 #### 自动安装（推荐）
 
 ```bash
-openswitch completion install
+sydev completion install
 ```
 
 该命令会自动检测当前 Shell 并安装补全脚本。
@@ -49,10 +49,10 @@ openswitch completion install
 
 ```bash
 # 系统级（需要 sudo）
-sudo openswitch completion bash > /etc/bash_completion.d/openswitch
+sudo sydev completion bash > /etc/bash_completion.d/sydev
 
 # 用户级
-openswitch completion bash >> ~/.bashrc
+sydev completion bash >> ~/.bashrc
 source ~/.bashrc
 ```
 
@@ -63,7 +63,7 @@ source ~/.bashrc
 mkdir -p ~/.zsh/completion
 
 # 生成补全脚本
-openswitch completion zsh > ~/.zsh/completion/_openswitch
+sydev completion zsh > ~/.zsh/completion/_sydev
 
 # 添加到 .zshrc（如果尚未添加）
 echo 'fpath=(~/.zsh/completion $fpath)' >> ~/.zshrc
@@ -78,9 +78,9 @@ source ~/.zshrc
 安装后，尝试输入以下内容并按 Tab 键：
 
 ```bash
-openswitch <Tab>          # 显示所有主命令
-openswitch workspace <Tab> # 显示 workspace 子命令
-openswitch project <Tab>   # 显示 project 子命令
+sydev <Tab>          # 显示所有主命令
+sydev workspace <Tab> # 显示 workspace 子命令
+sydev project <Tab>   # 显示 project 子命令
 ```
 
 ## 开发
@@ -110,4 +110,4 @@ pnpm exec tsc --noEmit
 - **inquirer** - 交互式提示
 - **chalk** - 终端颜色输出
 - **ora** - 进度 spinner
-- **@openswitch/core** - 核心业务逻辑（workspace 共享包）
+- **@sydev/core** - 核心业务逻辑（workspace 共享包）

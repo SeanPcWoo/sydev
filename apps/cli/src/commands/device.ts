@@ -5,8 +5,8 @@ export const deviceCommand = new Command('device')
   .description('管理目标设备')
   .addHelpText('after', `
 示例:
-  $ openswitch device add         # 交互式添加设备
-  $ openswitch device list        # 列出所有设备
+  $ sydev device add         # 交互式添加设备
+  $ sydev device list        # 列出所有设备
 `);
 
 deviceCommand

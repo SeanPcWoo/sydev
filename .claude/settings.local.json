@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:docs.acoinfo.com)",
+      "Bash(node:*)",
+      "WebSearch",
+      "WebFetch(domain:blog.devesh.tech)",
+      "WebFetch(domain:www.grizzlypeaksoftware.com)",
+      "WebFetch(domain:evilmartians.com)",
+      "WebFetch(domain:ondrejvelisek.github.io)",
+      "WebFetch(domain:www.ytg.io)",
+      "WebFetch(domain:oneuptime.com)",
+      "WebFetch(domain:simply-how.com)",
+      "WebFetch(domain:medium.com)",
+      "WebFetch(domain:www.workato.com)",
+      "WebFetch(domain:thelinuxcode.com)",
+      "WebFetch(domain:moldstud.com)",
+      "WebFetch(domain:leoy.blog)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}

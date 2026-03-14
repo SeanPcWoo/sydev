@@ -41,10 +41,10 @@ export function formatHelp(cmd: Command, helper: Help): string {
 
   // 示例
   output += chalk.bold('\n示例:\n');
-  output += `${indent}$ openswitch workspace init    ${chalk.dim('# 初始化 workspace')}\n`;
-  output += `${indent}$ openswitch project create    ${chalk.dim('# 创建项目')}\n`;
-  output += `${indent}$ openswitch device add        ${chalk.dim('# 添加设备')}\n`;
-  output += `${indent}$ openswitch --help            ${chalk.dim('# 查看帮助')}\n`;
+  output += `${indent}$ sydev workspace init    ${chalk.dim('# 初始化 workspace')}\n`;
+  output += `${indent}$ sydev project create    ${chalk.dim('# 创建项目')}\n`;
+  output += `${indent}$ sydev device add        ${chalk.dim('# 添加设备')}\n`;
+  output += `${indent}$ sydev --help            ${chalk.dim('# 查看帮助')}\n`;
 
   output += '\n';
   return output;

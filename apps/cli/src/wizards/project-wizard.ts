@@ -6,7 +6,7 @@ import {
   projectSchema,
   RlWrapper,
   type ProjectConfig
-} from '@openswitch/core';
+} from '@sydev/core';
 import { createCliProgressReporter } from '../utils/cli-progress.js';
 
 export async function runProjectWizard(): Promise<void> {

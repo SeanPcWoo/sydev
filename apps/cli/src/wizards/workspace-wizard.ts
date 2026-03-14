@@ -6,7 +6,7 @@ import {
   workspaceSchema,
   RlWrapper,
   type WorkspaceConfig
-} from '@openswitch/core';
+} from '@sydev/core';
 import { createCliProgressReporter } from '../utils/cli-progress.js';
 
 export async function runWorkspaceWizard(): Promise<void> {

@@ -1,10 +1,10 @@
 {
-  "name": "@openswitch/cli",
+  "name": "@sydev/cli",
   "version": "0.1.0",
   "description": "OpenSwitch CLI 工具",
   "type": "module",
   "bin": {
-    "openswitch": "./src/index.ts"
+    "sydev": "./src/index.ts"
   },
   "scripts": {
     "dev": "tsx src/index.ts",
@@ -13,7 +13,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@openswitch/core": "workspace:*",
+    "@sydev/core": "workspace:*",
     "commander": "^12.1.0",
     "chalk": "^5.3.0",
     "ora": "^8.0.1",

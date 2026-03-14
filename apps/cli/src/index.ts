@@ -4,7 +4,7 @@ import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import chalk from 'chalk';
-import { checkEnvironment } from '@openswitch/core';
+import { checkEnvironment } from '@sydev/core';
 import { workspaceCommand } from './commands/workspace.js';
 import { projectCommand } from './commands/project.js';
 import { deviceCommand } from './commands/device.js';
@@ -20,7 +20,7 @@ const packageJson = JSON.parse(
 const program = new Command();
 
 program
-  .name('openswitch')
+  .name('sydev')
   .description('SylixOS 开发环境快速部署工具')
   .version(packageJson.version, '-v, --version', '显示版本信息')
   .helpOption('-h, --help', '显示帮助信息')

@@ -1,5 +1,5 @@
 {
-  "name": "@openswitch/core",
+  "name": "@sydev/core",
   "version": "0.1.0",
   "description": "OpenSwitch 核心业务逻辑",
   "type": "module",

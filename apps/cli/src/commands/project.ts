@@ -5,8 +5,8 @@ export const projectCommand = new Command('project')
   .description('管理 SylixOS 项目')
   .addHelpText('after', `
 示例:
-  $ openswitch project create     # 交互式创建项目
-  $ openswitch project list       # 列出所有项目
+  $ sydev project create     # 交互式创建项目
+  $ sydev project list       # 列出所有项目
 `);
 
 projectCommand

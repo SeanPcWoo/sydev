@@ -8,15 +8,15 @@ export function createCompletionCommand(program: Command): Command {
     .addHelpText('after', `
 示例:
   # Bash 补全（系统级）
-  $ sudo openswitch completion bash > /etc/bash_completion.d/openswitch
+  $ sudo sydev completion bash > /etc/bash_completion.d/sydev
 
   # Bash 补全（用户级）
-  $ openswitch completion bash >> ~/.bashrc
+  $ sydev completion bash >> ~/.bashrc
   $ source ~/.bashrc
 
   # Zsh 补全
   $ mkdir -p ~/.zsh/completion
-  $ openswitch completion zsh > ~/.zsh/completion/_openswitch
+  $ sydev completion zsh > ~/.zsh/completion/_sydev
   $ echo 'fpath=(~/.zsh/completion $fpath)' >> ~/.zshrc
   $ echo 'autoload -U compinit && compinit' >> ~/.zshrc
   $ source ~/.zshrc
@@ -56,7 +56,7 @@ export function createCompletionCommand(program: Command): Command {
 
         const bashrcPath = join(homedir(), '.bashrc');
         const script = generateBashCompletion(program);
-        const marker = '# openswitch completion';
+        const marker = '# sydev completion';
 
         // 检查是否已安装
         if (existsSync(bashrcPath)) {
@@ -79,7 +79,7 @@ export function createCompletionCommand(program: Command): Command {
         console.log(chalk.cyan('检测到 Zsh，安装补全脚本...'));
 
         const completionDir = join(homedir(), '.zsh', 'completion');
-        const completionFile = join(completionDir, '_openswitch');
+        const completionFile = join(completionDir, '_sydev');
         const zshrcPath = join(homedir(), '.zshrc');
 
         // 创建补全目录
@@ -110,8 +110,8 @@ export function createCompletionCommand(program: Command): Command {
       } else {
         console.error(chalk.red('✗ 无法检测 Shell 类型'));
         console.log(chalk.yellow('请手动运行:'));
-        console.log(chalk.dim('  openswitch completion bash  # 或'));
-        console.log(chalk.dim('  openswitch completion zsh'));
+        console.log(chalk.dim('  sydev completion bash  # 或'));
+        console.log(chalk.dim('  sydev completion zsh'));
       }
     });
 

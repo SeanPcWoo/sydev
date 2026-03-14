@@ -4,11 +4,11 @@ export function generateBashCompletion(program: Command): string {
   const commands = extractCommands(program);
   const subcommands = extractSubcommands(program);
 
-  return `# openswitch bash completion script
-# 安装方法: openswitch completion bash > /etc/bash_completion.d/openswitch
-# 或: openswitch completion bash >> ~/.bashrc
+  return `# sydev bash completion script
+# 安装方法: sydev completion bash > /etc/bash_completion.d/sydev
+# 或: sydev completion bash >> ~/.bashrc
 
-_openswitch_completion() {
+_sydev_completion() {
     local cur prev opts base
     COMPREPLY=()
     cur="\${COMP_WORDS[COMP_CWORD]}"
@@ -27,7 +27,7 @@ ${generateBashSubcommandCases(subcommands)}
     esac
 }
 
-complete -F _openswitch_completion openswitch
+complete -F _sydev_completion sydev
 `;
 }
 
@@ -35,12 +35,12 @@ export function generateZshCompletion(program: Command): string {
   const commands = extractCommands(program);
   const subcommands = extractSubcommands(program);
 
-  return `#compdef openswitch
-# openswitch zsh completion script
-# 安装方法: openswitch completion zsh > ~/.zsh/completion/_openswitch
+  return `#compdef sydev
+# sydev zsh completion script
+# 安装方法: sydev completion zsh > ~/.zsh/completion/_sydev
 # 并确保 ~/.zshrc 中有: fpath=(~/.zsh/completion $fpath) 和 autoload -U compinit && compinit
 
-_openswitch() {
+_sydev() {
     local -a commands
     commands=(
 ${commands.map(cmd => `        '${cmd}:${getCommandDescription(program, cmd)}'`).join('\n')}
@@ -78,7 +78,7 @@ ${(subcommands.device || []).map(sub => `        '${sub.name}:${sub.description}
     fi
 }
 
-_openswitch
+_sydev
 `;
 }
 

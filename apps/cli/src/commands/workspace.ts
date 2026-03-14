@@ -1,13 +1,13 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
-import { checkEnvironment } from '@openswitch/core';
+import { checkEnvironment } from '@sydev/core';
 
 export const workspaceCommand = new Command('workspace')
   .description('管理 SylixOS workspace')
   .addHelpText('after', `
 示例:
-  $ openswitch workspace init     # 交互式初始化 workspace
-  $ openswitch workspace status   # 查看 workspace 状态
+  $ sydev workspace init     # 交互式初始化 workspace
+  $ sydev workspace status   # 查看 workspace 状态
 `);
 
 workspaceCommand
@@ -34,6 +34,6 @@ workspaceCommand
       console.log(chalk.dim(`  路径: ${workspacePath}`));
     } else {
       console.log(chalk.yellow('⚠ Workspace 未初始化'));
-      console.log(chalk.dim('  运行 openswitch workspace init 开始初始化'));
+      console.log(chalk.dim('  运行 sydev workspace init 开始初始化'));
     }
   });

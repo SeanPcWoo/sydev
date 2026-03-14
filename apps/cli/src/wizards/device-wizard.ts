@@ -6,7 +6,7 @@ import {
   ConfigManager,
   deviceSchema,
   type DeviceConfig
-} from '@openswitch/core';
+} from '@sydev/core';
 
 export async function runDeviceWizard(): Promise<void> {
   console.log(chalk.bold.cyan('\n🔌 设备配置向导\n'));
@@ -107,8 +107,8 @@ export async function runDeviceWizard(): Promise<void> {
     return;
   }
 
-  // 保存设备配置到 .openswitch/devices.json
-  const configDir = join(process.cwd(), '.openswitch');
+  // 保存设备配置到 .sydev/devices.json
+  const configDir = join(process.cwd(), '.sydev');
   const devicesFile = join(configDir, 'devices.json');
 
   let devices: DeviceConfig[] = [];

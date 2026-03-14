@@ -1,5 +1,5 @@
 {
-  "name": "openswitch",
+  "name": "sydev",
   "version": "0.1.0",
   "private": true,
   "description": "SylixOS 开发环境快速部署工具",
@@ -7,7 +7,7 @@
     "node": ">=24.14.0"
   },
   "scripts": {
-    "dev:cli": "pnpm --filter @openswitch/cli dev",
+    "dev:cli": "pnpm --filter @sydev/cli dev",
     "build": "pnpm -r build",
     "test": "vitest",
     "test:ui": "vitest --ui",
