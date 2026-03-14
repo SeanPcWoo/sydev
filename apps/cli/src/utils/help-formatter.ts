@@ -20,7 +20,7 @@ export function formatHelp(cmd: Command, helper: Help): string {
   output += `${indent}$ ${cmd.name()} ${helper.commandUsage(cmd)}\n`;
 
   // 命令列表
-  const commands = cmd.commands.filter(c => !c.hidden);
+  const commands = cmd.commands.filter(c => !(c as any).hidden);
   if (commands.length > 0) {
     output += chalk.bold('\n命令:\n');
     commands.forEach(c => {
