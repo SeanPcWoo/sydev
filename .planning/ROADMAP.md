@@ -27,7 +27,7 @@
 5. 用户可以通过 --help 查看所有命令的帮助信息和使用示例
 6. 用户可以使用清晰的子命令结构（workspace、project、device）完成操作
 
-**Plans:** 5/5 plans complete
+**Plans:** 6 plans
 
 Plans:
 - [ ] 01-01-PLAN.md — 项目 Monorepo 基础架构和环境健康检查
@@ -35,6 +35,7 @@ Plans:
 - [ ] 01-03-PLAN.md — CLI 框架和帮助系统
 - [ ] 01-04-PLAN.md — 交互式向导（workspace、project、device）
 - [ ] 01-05-PLAN.md — Shell 命令自动补全
+- [ ] 01-06-PLAN.md — 修复环境检查器命令检测和错误消息（gap closure）
 
 ---
 
