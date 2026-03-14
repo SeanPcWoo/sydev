@@ -1,0 +1,21 @@
+{
+  "name": "@openswitch/cli",
+  "version": "0.1.0",
+  "description": "OpenSwitch CLI 工具",
+  "type": "module",
+  "bin": {
+    "openswitch": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@openswitch/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0",
+    "tsx": "^4.0.0"
+  }
+}
