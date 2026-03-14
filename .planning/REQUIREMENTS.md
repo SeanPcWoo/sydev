@@ -15,10 +15,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### CLI-WIZARD (CLI 交互式向导)
 
-- [ ] **CLI-WIZARD-01**: 用户可以通过交互式向导配置 workspace 参数（Base 版本、平台、构建选项）
-- [ ] **CLI-WIZARD-02**: 用户可以通过交互式向导配置项目参数（名称、类型、模板）
-- [ ] **CLI-WIZARD-03**: 用户可以通过交互式向导配置设备连接信息（IP、端口、凭证）
-- [ ] **CLI-WIZARD-04**: 用户在向导中输入错误参数时立即收到验证提示
+- [x] **CLI-WIZARD-01**: 用户可以通过交互式向导配置 workspace 参数（Base 版本、平台、构建选项）
+- [x] **CLI-WIZARD-02**: 用户可以通过交互式向导配置项目参数（名称、类型、模板）
+- [x] **CLI-WIZARD-03**: 用户可以通过交互式向导配置设备连接信息（IP、端口、凭证）
+- [x] **CLI-WIZARD-04**: 用户在向导中输入错误参数时立即收到验证提示
 
 ### CLI-TEMPLATE (CLI 模板系统)
 
@@ -123,10 +123,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CLI-ENV-01 | Phase 1 | Complete |
 | CLI-ENV-02 | Phase 1 | Complete |
 | CLI-ENV-03 | Phase 1 | Complete |
-| CLI-WIZARD-01 | Phase 1 | Pending |
-| CLI-WIZARD-02 | Phase 1 | Pending |
-| CLI-WIZARD-03 | Phase 1 | Pending |
-| CLI-WIZARD-04 | Phase 1 | Pending |
+| CLI-WIZARD-01 | Phase 1 | Complete |
+| CLI-WIZARD-02 | Phase 1 | Complete |
+| CLI-WIZARD-03 | Phase 1 | Complete |
+| CLI-WIZARD-04 | Phase 1 | Complete |
 | CLI-FEEDBACK-01 | Phase 1 | Complete |
 | CLI-FEEDBACK-02 | Phase 1 | Complete |
 | CLI-FEEDBACK-03 | Phase 1 | Complete |
