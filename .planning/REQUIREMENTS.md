@@ -35,19 +35,19 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### CLI-FEEDBACK (CLI 进度反馈)
 
-- [ ] **CLI-FEEDBACK-01**: 用户在初始化过程中看到实时进度反馈（当前步骤、进度百分比）
-- [ ] **CLI-FEEDBACK-02**: 用户在每个步骤完成时看到成功提示
-- [ ] **CLI-FEEDBACK-03**: 用户在操作失败时看到清晰的错误信息和堆栈跟踪
+- [x] **CLI-FEEDBACK-01**: 用户在初始化过程中看到实时进度反馈（当前步骤、进度百分比）
+- [x] **CLI-FEEDBACK-02**: 用户在每个步骤完成时看到成功提示
+- [x] **CLI-FEEDBACK-03**: 用户在操作失败时看到清晰的错误信息和堆栈跟踪
 
 ### CLI-HELP (CLI 帮助文档)
 
-- [ ] **CLI-HELP-01**: 用户可以通过 --help 查看所有命令的帮助信息
-- [ ] **CLI-HELP-02**: 用户可以查看每个命令的使用示例
-- [ ] **CLI-HELP-03**: 用户可以查看工具的版本信息
+- [x] **CLI-HELP-01**: 用户可以通过 --help 查看所有命令的帮助信息
+- [x] **CLI-HELP-02**: 用户可以查看每个命令的使用示例
+- [x] **CLI-HELP-03**: 用户可以查看工具的版本信息
 
 ### CLI-STRUCT (CLI 命令结构)
 
-- [ ] **CLI-STRUCT-01**: 用户可以使用清晰的子命令结构（workspace、project、device、template）
+- [x] **CLI-STRUCT-01**: 用户可以使用清晰的子命令结构（workspace、project、device、template）
 - [ ] **CLI-STRUCT-02**: 用户可以通过命令自动补全提高效率
 
 ### WEB-CONFIG (Web 配置界面)
@@ -127,13 +127,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CLI-WIZARD-02 | Phase 1 | Pending |
 | CLI-WIZARD-03 | Phase 1 | Pending |
 | CLI-WIZARD-04 | Phase 1 | Pending |
-| CLI-FEEDBACK-01 | Phase 1 | Pending |
-| CLI-FEEDBACK-02 | Phase 1 | Pending |
-| CLI-FEEDBACK-03 | Phase 1 | Pending |
-| CLI-HELP-01 | Phase 1 | Pending |
-| CLI-HELP-02 | Phase 1 | Pending |
-| CLI-HELP-03 | Phase 1 | Pending |
-| CLI-STRUCT-01 | Phase 1 | Pending |
+| CLI-FEEDBACK-01 | Phase 1 | Complete |
+| CLI-FEEDBACK-02 | Phase 1 | Complete |
+| CLI-FEEDBACK-03 | Phase 1 | Complete |
+| CLI-HELP-01 | Phase 1 | Complete |
+| CLI-HELP-02 | Phase 1 | Complete |
+| CLI-HELP-03 | Phase 1 | Complete |
+| CLI-STRUCT-01 | Phase 1 | Complete |
 | CLI-STRUCT-02 | Phase 1 | Pending |
 | CLI-TEMPLATE-01 | Phase 2 | Pending |
 | CLI-TEMPLATE-02 | Phase 2 | Pending |
