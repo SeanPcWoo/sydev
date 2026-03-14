@@ -91,7 +91,7 @@ describe('env-checker', () => {
   });
 
   describe('checkEnvironment', () => {
-    it('should return overall false when rl command unavailable', () => {
+    it('should return overall true when rl unavailable but toolchain found', () => {
       vi.mocked(childProcess.execSync).mockImplementation(() => {
         const error: any = new Error('Command not found');
         error.code = 'ENOENT';
@@ -101,11 +101,11 @@ describe('env-checker', () => {
 
       const result = checkEnvironment();
 
-      expect(result.overall).toBe(false);
+      expect(result.overall).toBe(true);
       expect(result.rl.available).toBe(false);
     });
 
-    it('should return overall false when toolchain not installed', () => {
+    it('should return overall true when rl available but toolchain not found', () => {
       vi.mocked(childProcess.execSync).mockReturnValue(
         Buffer.from('rl version 2.5.3')
       );
@@ -113,7 +113,7 @@ describe('env-checker', () => {
 
       const result = checkEnvironment();
 
-      expect(result.overall).toBe(false);
+      expect(result.overall).toBe(true);
       expect(result.toolchain.installed).toBe(false);
     });
 

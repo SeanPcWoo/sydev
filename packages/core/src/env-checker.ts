@@ -99,6 +99,7 @@ export function checkToolchain(): ToolchainCheckResult {
 
 /**
  * 综合检查环境状态
+ * rl-workspace 命令可用即视为环境就绪，工具链路径检查为补充信息
  */
 export function checkEnvironment(): EnvironmentStatus {
   const rl = checkRlCommand();
@@ -107,6 +108,6 @@ export function checkEnvironment(): EnvironmentStatus {
   return {
     rl,
     toolchain,
-    overall: rl.available && toolchain.installed
+    overall: rl.available || toolchain.installed
   };
 }
