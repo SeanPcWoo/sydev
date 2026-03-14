@@ -63,7 +63,7 @@ describe('env-checker', () => {
       const result = checkToolchain();
 
       expect(result.installed).toBe(false);
-      expect(result.error).toContain('not found');
+      expect(result.error).toContain('工具链');
     });
 
     it('should return installed when REALEVO_HOME is set and exists', () => {

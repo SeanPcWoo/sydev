@@ -25,6 +25,7 @@ export interface ToolchainCheckResult {
   installed: boolean;
   path?: string;
   error?: string;
+  fixSuggestion?: string;
 }
 
 /**
