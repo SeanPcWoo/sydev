@@ -8,6 +8,7 @@ import { checkEnvironment } from '@openswitch/core';
 import { workspaceCommand } from './commands/workspace.js';
 import { projectCommand } from './commands/project.js';
 import { deviceCommand } from './commands/device.js';
+import { createCompletionCommand } from './commands/completion.js';
 import { formatHelp } from './utils/help-formatter.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -28,9 +29,15 @@ program
   });
 
 // 全局环境检查选项
-program.hook('preAction', async (thisCommand) => {
+program.hook('preAction', async (thisCommand, actionCommand) => {
   // 跳过 --version 和 --help
   if (thisCommand.args.includes('--version') || thisCommand.args.includes('--help')) {
+    return;
+  }
+
+  // 跳过 completion 命令的环境检查（不需要 RealEvo-Stream 环境）
+  // 检查 process.argv 中是否包含 completion
+  if (process.argv.includes('completion')) {
     return;
   }
 
@@ -53,6 +60,7 @@ program.hook('preAction', async (thisCommand) => {
 program.addCommand(workspaceCommand);
 program.addCommand(projectCommand);
 program.addCommand(deviceCommand);
+program.addCommand(createCompletionCommand(program));
 
 // 解析命令行参数
 program.parse();
