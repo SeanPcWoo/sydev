@@ -48,7 +48,7 @@ Requirements for initial release. Each maps to roadmap phases.
 ### CLI-STRUCT (CLI 命令结构)
 
 - [x] **CLI-STRUCT-01**: 用户可以使用清晰的子命令结构（workspace、project、device、template）
-- [ ] **CLI-STRUCT-02**: 用户可以通过命令自动补全提高效率
+- [x] **CLI-STRUCT-02**: 用户可以通过命令自动补全提高效率
 
 ### WEB-CONFIG (Web 配置界面)
 
@@ -134,7 +134,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CLI-HELP-02 | Phase 1 | Complete |
 | CLI-HELP-03 | Phase 1 | Complete |
 | CLI-STRUCT-01 | Phase 1 | Complete |
-| CLI-STRUCT-02 | Phase 1 | Pending |
+| CLI-STRUCT-02 | Phase 1 | Complete |
 | CLI-TEMPLATE-01 | Phase 2 | Pending |
 | CLI-TEMPLATE-02 | Phase 2 | Pending |
 | CLI-TEMPLATE-03 | Phase 2 | Pending |
