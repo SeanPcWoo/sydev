@@ -9,9 +9,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### CLI-ENV (CLI 环境检查)
 
-- [ ] **CLI-ENV-01**: 用户运行工具时自动检查 RealEvo-Stream 工具链是否已安装
-- [ ] **CLI-ENV-02**: 用户运行工具时自动检查 rl 命令是否可用且版本兼容
-- [ ] **CLI-ENV-03**: 用户在环境检查失败时收到清晰的错误提示和修复建议
+- [x] **CLI-ENV-01**: 用户运行工具时自动检查 RealEvo-Stream 工具链是否已安装
+- [x] **CLI-ENV-02**: 用户运行工具时自动检查 rl 命令是否可用且版本兼容
+- [x] **CLI-ENV-03**: 用户在环境检查失败时收到清晰的错误提示和修复建议
 
 ### CLI-WIZARD (CLI 交互式向导)
 
@@ -120,9 +120,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CLI-ENV-01 | Phase 1 | Pending |
-| CLI-ENV-02 | Phase 1 | Pending |
-| CLI-ENV-03 | Phase 1 | Pending |
+| CLI-ENV-01 | Phase 1 | Complete |
+| CLI-ENV-02 | Phase 1 | Complete |
+| CLI-ENV-03 | Phase 1 | Complete |
 | CLI-WIZARD-01 | Phase 1 | Pending |
 | CLI-WIZARD-02 | Phase 1 | Pending |
 | CLI-WIZARD-03 | Phase 1 | Pending |
