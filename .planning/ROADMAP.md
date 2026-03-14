@@ -6,7 +6,7 @@
 
 ## Phases
 
-- [ ] **Phase 1: CLI 核心功能** - 可工作的 CLI 工具，支持基本初始化、环境检查、交互式向导
+- [x] **Phase 1: CLI 核心功能** - 可工作的 CLI 工具，支持基本初始化、环境检查、交互式向导 (completed 2026-03-14)
 - [ ] **Phase 2: 模板与配置系统** - 模板系统、配置导入导出、单命令快速初始化
 - [ ] **Phase 3: Web UI 与批量操作** - Web 可视化界面、批量操作、性能优化
 
@@ -27,7 +27,7 @@
 5. 用户可以通过 --help 查看所有命令的帮助信息和使用示例
 6. 用户可以使用清晰的子命令结构（workspace、project、device）完成操作
 
-**Plans:** 2/5 plans executed
+**Plans:** 5/5 plans complete
 
 Plans:
 - [ ] 01-01-PLAN.md — 项目 Monorepo 基础架构和环境健康检查
@@ -78,7 +78,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. CLI 核心功能 | 2/5 | In Progress|  |
+| 1. CLI 核心功能 | 2/5 | Complete    | 2026-03-14 |
 | 2. 模板与配置系统 | 0/0 | Not started | - |
 | 3. Web UI 与批量操作 | 0/0 | Not started | - |
 
