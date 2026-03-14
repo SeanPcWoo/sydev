@@ -120,13 +120,51 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (To be filled by roadmapper) | | |
+| CLI-ENV-01 | Phase 1 | Pending |
+| CLI-ENV-02 | Phase 1 | Pending |
+| CLI-ENV-03 | Phase 1 | Pending |
+| CLI-WIZARD-01 | Phase 1 | Pending |
+| CLI-WIZARD-02 | Phase 1 | Pending |
+| CLI-WIZARD-03 | Phase 1 | Pending |
+| CLI-WIZARD-04 | Phase 1 | Pending |
+| CLI-FEEDBACK-01 | Phase 1 | Pending |
+| CLI-FEEDBACK-02 | Phase 1 | Pending |
+| CLI-FEEDBACK-03 | Phase 1 | Pending |
+| CLI-HELP-01 | Phase 1 | Pending |
+| CLI-HELP-02 | Phase 1 | Pending |
+| CLI-HELP-03 | Phase 1 | Pending |
+| CLI-STRUCT-01 | Phase 1 | Pending |
+| CLI-STRUCT-02 | Phase 1 | Pending |
+| CLI-TEMPLATE-01 | Phase 2 | Pending |
+| CLI-TEMPLATE-02 | Phase 2 | Pending |
+| CLI-TEMPLATE-03 | Phase 2 | Pending |
+| CLI-TEMPLATE-04 | Phase 2 | Pending |
+| CLI-CONFIG-01 | Phase 2 | Pending |
+| CLI-CONFIG-02 | Phase 2 | Pending |
+| CLI-CONFIG-03 | Phase 2 | Pending |
+| WEB-CONFIG-01 | Phase 3 | Pending |
+| WEB-CONFIG-02 | Phase 3 | Pending |
+| WEB-CONFIG-03 | Phase 3 | Pending |
+| WEB-CONFIG-04 | Phase 3 | Pending |
+| WEB-STATUS-01 | Phase 3 | Pending |
+| WEB-STATUS-02 | Phase 3 | Pending |
+| WEB-STATUS-03 | Phase 3 | Pending |
+| WEB-TEMPLATE-01 | Phase 3 | Pending |
+| WEB-TEMPLATE-02 | Phase 3 | Pending |
+| WEB-TEMPLATE-03 | Phase 3 | Pending |
+| WEB-TEMPLATE-04 | Phase 3 | Pending |
+| WEB-TEMPLATE-05 | Phase 3 | Pending |
+| WEB-EXPORT-01 | Phase 3 | Pending |
+| WEB-EXPORT-02 | Phase 3 | Pending |
+| BATCH-01 | Phase 3 | Pending |
+| BATCH-02 | Phase 3 | Pending |
+| BATCH-03 | Phase 3 | Pending |
 
 **Coverage:**
 - v1 requirements: 33 total
-- Mapped to phases: 0
-- Unmapped: 33 ⚠️
+- Mapped to phases: 33
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-14*
-*Last updated: 2026-03-14 after initial definition*
+*Last updated: 2026-03-14 after roadmap creation*
