@@ -1,9 +1,9 @@
 ---
-status: complete
+status: resolved
 phase: 01-cli-core
 source: 01-01-SUMMARY.md, 01-02-SUMMARY.md, 01-03-SUMMARY.md, 01-04-SUMMARY.md, 01-05-SUMMARY.md
 started: 2026-03-14T08:15:00Z
-updated: 2026-03-14T08:45:00Z
+updated: 2026-03-14T17:00:00Z
 ---
 
 ## Current Test
@@ -73,9 +73,14 @@ skipped: 4
 ## Gaps
 
 - truth: "环境检查器能够正确检测 RealEvo-Stream 工具链（rl-workspace、rl-project 等命令）"
-  status: failed
+  status: resolved
   reason: "User reported: 系统明明有 rl-workspace、rl-project 等命令，但环境检查失败。检查器在找不存在的 `rl` 命令，应该检查实际的 `rl-workspace`、`rl-project` 等命令。另外错误信息混合中英文，修复建议是英文且不够具体。"
   severity: blocker
   test: 1
-  artifacts: []
-  missing: []
+  root_cause: "checkRlCommand() 函数检查了不存在的 `rl --version` 命令。根据项目文档，RealEvo-Stream 工具链的实际命令是 `rl-workspace`、`rl-project`、`rl-device`、`rl-build` 等独立命令，不存在统一的 `rl` 命令。此外，所有错误消息和修复建议都是英文，不符合用户偏好，且修复建议过于笼统，缺乏可操作性。"
+  artifacts:
+    - path: "packages/core/src/env-checker.ts"
+      issue: "checkRlCommand() 检查了错误的命令名称（rl --version），错误消息全部为英文且不够具体"
+  resolution: "Plan 01-06 修复了所有问题：命令检测改为 rl-workspace，所有错误消息中文化，修复建议包含具体命令示例和路径示例"
+  resolved_by: "01-06"
+  debug_session: ".planning/debug/env-check-wrong-command.md"
