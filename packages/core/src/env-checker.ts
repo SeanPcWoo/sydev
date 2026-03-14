@@ -10,11 +10,11 @@ import type {
 } from './types.js';
 
 /**
- * 检查 rl 命令是否可用并解析版本号
+ * 检查 rl-workspace 命令是否可用并解析版本号
  */
 export function checkRlCommand(): EnvCheckResult {
   try {
-    const output = execSync('rl --version', {
+    const output = execSync('rl-workspace --version', {
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe']
     });
@@ -28,8 +28,8 @@ export function checkRlCommand(): EnvCheckResult {
     if (!versionMatch) {
       return {
         available: false,
-        error: 'Failed to parse version from rl command output',
-        fixSuggestion: 'Please ensure RealEvo-Stream toolchain is properly installed'
+        error: '无法从 rl-workspace 命令输出中解析版本号',
+        fixSuggestion: '请确保 RealEvo-Stream 工具链已正确安装。检查以下命令是否可用：rl-workspace, rl-project, rl-device, rl-build'
       };
     }
 
@@ -48,15 +48,15 @@ export function checkRlCommand(): EnvCheckResult {
     if (error.code === 'ENOENT') {
       return {
         available: false,
-        error: 'rl command not found in PATH',
-        fixSuggestion: 'Please install RealEvo-Stream toolchain and ensure rl command is in your PATH. Visit https://realevo.com for installation instructions.'
+        error: '未找到 rl-workspace 命令',
+        fixSuggestion: '请安装 RealEvo-Stream 工具链并确保以下命令在 PATH 中：rl-workspace, rl-project, rl-device, rl-build。安装后请运行 \'which rl-workspace\' 验证。'
       };
     }
 
     return {
       available: false,
-      error: `Failed to execute rl command: ${error.message}`,
-      fixSuggestion: 'Please check your RealEvo-Stream installation'
+      error: `执行 rl-workspace 命令失败: ${error.message}`,
+      fixSuggestion: '请检查 RealEvo-Stream 安装。尝试手动运行 \'rl-workspace --version\' 查看详细错误信息。'
     };
   }
 }

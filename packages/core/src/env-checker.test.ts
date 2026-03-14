@@ -22,7 +22,7 @@ describe('env-checker', () => {
       const result = checkRlCommand();
 
       expect(result.available).toBe(false);
-      expect(result.error).toContain('rl command not found');
+      expect(result.error).toContain('未找到 rl-workspace 命令');
       expect(result.fixSuggestion).toBeDefined();
     });
 
@@ -51,7 +51,7 @@ describe('env-checker', () => {
       const result = checkRlCommand();
 
       expect(result.available).toBe(false);
-      expect(result.error).toContain('parse version');
+      expect(result.error).toContain('解析版本号');
     });
   });
 
