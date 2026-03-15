@@ -9,6 +9,8 @@ import { workspaceCommand } from './commands/workspace.js';
 import { projectCommand } from './commands/project.js';
 import { deviceCommand } from './commands/device.js';
 import { createCompletionCommand } from './commands/completion.js';
+import { templateCommand } from './commands/template.js';
+import { initCommand } from './commands/init.js';
 import { formatHelp } from './utils/help-formatter.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -41,6 +43,15 @@ program.hook('preAction', async (thisCommand, actionCommand) => {
     return;
   }
 
+  // 跳过 template（除 apply 外）和 init 命令的环境检查
+  const argv = process.argv;
+  if (argv.includes('template') && !argv.includes('apply')) {
+    return;
+  }
+  if (argv.includes('init')) {
+    return;
+  }
+
   // 执行环境检查
   const envStatus = await checkEnvironment();
   if (!envStatus.overall) {
@@ -60,6 +71,8 @@ program.hook('preAction', async (thisCommand, actionCommand) => {
 program.addCommand(workspaceCommand);
 program.addCommand(projectCommand);
 program.addCommand(deviceCommand);
+program.addCommand(templateCommand);
+program.addCommand(initCommand);
 program.addCommand(createCompletionCommand(program));
 
 // 解析命令行参数
