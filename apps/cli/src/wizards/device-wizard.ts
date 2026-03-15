@@ -189,7 +189,8 @@ export async function runDeviceWizard(): Promise<void> {
     ftp: config.ftp,
     gdb: config.gdb,
     username: config.username,
-    password: config.password
+    password: config.password,
+    cwd: answers.cwd
   });
 
   if (result.success) {
