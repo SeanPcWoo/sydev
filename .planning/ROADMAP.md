@@ -56,7 +56,7 @@ Plans:
 4. 用户可以将配置导出为 JSON 文件，并从 JSON 配置文件导入配置
 5. 用户可以通过单条命令（如 `tool init --config config.json`）从配置文件完成全流程初始化
 
-**Plans:** 3 plans
+**Plans:** 2/3 plans executed
 
 Plans:
 - [x] 02-01-PLAN.md — Schema 定义 + TemplateManager CRUD 逻辑
@@ -88,7 +88,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. CLI 核心功能 | 8/9 | In progress | - |
-| 2. 模板与配置系统 | 1/3 | In progress | - |
+| 2. 模板与配置系统 | 2/3 | In Progress|  |
 | 3. Web UI 与批量操作 | 0/0 | Not started | - |
 
 ---

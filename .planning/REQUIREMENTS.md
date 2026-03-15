@@ -24,14 +24,14 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **CLI-TEMPLATE-01**: 用户可以保存当前配置为模板（环境模板、项目模板、设备模板、全流程模板）
 - [x] **CLI-TEMPLATE-02**: 用户可以列出所有已保存的配置模板
-- [ ] **CLI-TEMPLATE-03**: 用户可以从已保存的模板快速初始化环境
+- [x] **CLI-TEMPLATE-03**: 用户可以从已保存的模板快速初始化环境
 - [x] **CLI-TEMPLATE-04**: 用户可以删除不需要的配置模板
 
 ### CLI-CONFIG (CLI 配置管理)
 
 - [x] **CLI-CONFIG-01**: 用户可以将配置导出为 JSON 文件
 - [x] **CLI-CONFIG-02**: 用户可以从 JSON 配置文件导入配置
-- [ ] **CLI-CONFIG-03**: 用户可以通过单条命令从配置文件完成全流程初始化
+- [x] **CLI-CONFIG-03**: 用户可以通过单条命令从配置文件完成全流程初始化
 
 ### CLI-FEEDBACK (CLI 进度反馈)
 
@@ -137,11 +137,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CLI-STRUCT-02 | Phase 1 | Complete |
 | CLI-TEMPLATE-01 | Phase 2 | Complete |
 | CLI-TEMPLATE-02 | Phase 2 | Complete |
-| CLI-TEMPLATE-03 | Phase 2 | Pending |
+| CLI-TEMPLATE-03 | Phase 2 | Complete |
 | CLI-TEMPLATE-04 | Phase 2 | Complete |
 | CLI-CONFIG-01 | Phase 2 | Complete |
 | CLI-CONFIG-02 | Phase 2 | Complete |
-| CLI-CONFIG-03 | Phase 2 | Pending |
+| CLI-CONFIG-03 | Phase 2 | Complete |
 | WEB-CONFIG-01 | Phase 3 | Pending |
 | WEB-CONFIG-02 | Phase 3 | Pending |
 | WEB-CONFIG-03 | Phase 3 | Pending |
