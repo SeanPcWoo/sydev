@@ -249,24 +249,11 @@ templateCommand
 
     const content = await collectContent(templateType);
 
-    // export 导出的是可执行配置，需要 cwd/basePath
-    const { cwd } = await inquirer.prompt([
-      { type: 'input', name: 'cwd', message: 'Workspace 路径:', default: process.cwd() },
-    ]);
-    const { basePath } = await inquirer.prompt([
-      {
-        type: 'input', name: 'basePath', message: 'Base 目录路径:',
-        default: `${cwd.trim()}/.realevo/base`,
-      },
-    ]);
-
     let exportData: any;
     if (templateType === 'full') {
-      exportData = { schemaVersion: 1, ...content, workspace: { ...content.workspace, cwd: cwd.trim(), basePath: basePath.trim() } };
-    } else if (templateType === 'workspace') {
-      exportData = { schemaVersion: 1, workspace: { ...content, cwd: cwd.trim(), basePath: basePath.trim() } };
+      exportData = { schemaVersion: 1, ...content };
     } else {
-      exportData = { schemaVersion: 1, [templateType]: content };
+      exportData = { schemaVersion: 1, type: templateType, [templateType]: content };
     }
 
     const json = ConfigManager.exportToJson(exportData);
@@ -287,18 +274,37 @@ templateCommand
       return;
     }
 
-    const result = ConfigManager.importFromJson(fullConfigSchema, json);
-    if (!result.valid) {
-      console.error(chalk.red('✗ 配置验证失败:'));
-      result.errors?.forEach((e) => console.error(chalk.yellow(`  - ${e}`)));
-      console.log(chalk.cyan('建议: 检查 JSON 文件格式是否符合 sydev 配置 schema'));
+    let parsed: any;
+    try {
+      parsed = JSON.parse(json);
+    } catch {
+      console.error(chalk.red('✗ 文件不是有效的 JSON'));
       return;
     }
 
-    console.log(chalk.green('✓ 配置验证通过'));
+    // 自动检测类型：有 workspace 字段且无 type 字段 → full，否则按 type 字段判断
+    let detectedType: TemplateType;
+    let templateData: any;
+
+    if (parsed.type && ['workspace', 'project', 'device'].includes(parsed.type)) {
+      detectedType = parsed.type;
+      templateData = parsed[detectedType];
+      if (!templateData) {
+        console.error(chalk.red(`✗ 文件中缺少 ${detectedType} 字段`));
+        return;
+      }
+    } else if (parsed.workspace) {
+      detectedType = 'full';
+      templateData = parsed;
+    } else {
+      console.error(chalk.red('✗ 无法识别配置类型，文件需包含 type 字段或 workspace 字段'));
+      return;
+    }
+
+    console.log(chalk.green(`✓ 检测到 ${detectedType} 类型配置`));
 
     const { saveAsTemplate } = await inquirer.prompt([
-      { type: 'confirm', name: 'saveAsTemplate', message: '是否保存为模板?', default: false },
+      { type: 'confirm', name: 'saveAsTemplate', message: '是否保存为模板?', default: true },
     ]);
 
     if (saveAsTemplate) {
@@ -309,11 +315,13 @@ templateCommand
 
       const tm = new TemplateManager(process.cwd());
       try {
-        const meta = tm.save(name, description, 'full', result.data);
-        console.log(chalk.green(`✓ 已保存为模板: ${meta.id}`));
+        const meta = tm.save(name, description, detectedType, templateData);
+        console.log(chalk.green(`✓ 已保存为模板: ${meta.id} (${meta.type})`));
       } catch (err: any) {
         console.error(chalk.red(`✗ 保存失败: ${err.message}`));
       }
+    }
+  });
     }
   });
 // --- Content collection helpers ---

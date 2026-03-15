@@ -3,15 +3,15 @@ status: testing
 phase: 02-template-config
 source: 02-01-SUMMARY.md, 02-02-SUMMARY.md, 02-03-SUMMARY.md
 started: 2026-03-15T11:00:00Z
-updated: 2026-03-15T11:30:00Z
+updated: 2026-03-15T12:40:00Z
 ---
 
 ## Current Test
 
-number: 2
-name: Template List
+number: 3
+name: Template Apply with Partial Selection
 expected: |
-  Run `npx tsx apps/cli/src/index.ts template list`. CLI displays a list of saved templates with name, type, and creation date.
+  Run `npx tsx apps/cli/src/index.ts template apply 测试全流程`. CLI asks for workspace path and base path, then shows inquirer checkbox to select which parts (workspace/projects/devices) to apply. Only selected parts are executed.
 awaiting: user response
 
 ## Tests
@@ -24,7 +24,7 @@ severity: major
 
 ### 2. Template List
 expected: Run `npx sydev template list`. CLI displays a list of saved templates with name, type, and creation date.
-result: [pending]
+result: pass
 
 ### 3. Template Apply with Partial Selection
 expected: Run `npx sydev template apply` on a "full" type template. CLI shows inquirer checkbox allowing selection of which parts (workspace/projects/devices) to apply. Only selected parts are applied.
