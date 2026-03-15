@@ -50,6 +50,9 @@ export {
 // 初始化编排
 export { InitOrchestrator, type InitResult, type InitOptions, type StepError } from './init-orchestrator.js';
 
+// 状态读取
+export { ConfigReader, type WorkspaceStatus } from './config-reader.js';
+
 // Web 服务器
 export { createWebServer, type WebServerOptions, type WebServerInstance } from './web-server.js';
 export { registerApiRoutes } from './api-routes.js';

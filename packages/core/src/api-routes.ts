@@ -1,9 +1,25 @@
 import type { Express, Request, Response, NextFunction } from 'express';
+import { ConfigReader } from './config-reader.js';
 
 export function registerApiRoutes(app: Express): void {
+  const configReader = new ConfigReader();
+
   // Health check
-  app.get('/api/status', (_req: Request, res: Response) => {
+  app.get('/api/health', (_req: Request, res: Response) => {
     res.json({ ok: true });
+  });
+
+  // Status endpoints
+  app.get('/api/status/workspace', (_req: Request, res: Response) => {
+    res.json(configReader.getWorkspaceStatus());
+  });
+
+  app.get('/api/status/projects', (_req: Request, res: Response) => {
+    res.json(configReader.getProjects());
+  });
+
+  app.get('/api/status/devices', (_req: Request, res: Response) => {
+    res.json(configReader.getDevices());
   });
 
   // Workspace
