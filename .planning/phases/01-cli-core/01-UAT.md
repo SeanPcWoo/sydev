@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: resolved
 phase: 01-cli-core
-source: 01-01-SUMMARY.md, 01-02-SUMMARY.md, 01-03-SUMMARY.md, 01-04-SUMMARY.md, 01-05-SUMMARY.md, 01-06-SUMMARY.md
+source: 01-01-SUMMARY.md, 01-02-SUMMARY.md, 01-03-SUMMARY.md, 01-04-SUMMARY.md, 01-05-SUMMARY.md, 01-06-SUMMARY.md, 01-07-SUMMARY.md, 01-08-SUMMARY.md
 started: 2026-03-14T08:15:00Z
-updated: 2026-03-15T09:22:00Z
+updated: 2026-03-15T14:35:00Z
 ---
 
 ## Current Test
@@ -86,7 +86,7 @@ skipped: 0
   debug_session: ".planning/debug/env-check-wrong-command.md"
 
 - truth: "Project 创建向导应该先选择 workspace 路径（默认当前目录），然后询问是导入已有 git 工程还是新建工程，导入时提供 git 仓库地址和分支，工程名称默认为 git 仓库名"
-  status: failed
+  status: resolved
   reason: "User reported: 整个逻辑不对，首先还是要用户选择创建好的 workspace 的路径，默认情况，应该就是执行命令的所在目录。然后创建工程时，先是询问是导入已有git 工程，还是新建工程，如果是导入已有工程，那么直接让用户写 git 仓库地址和分支，并且工程的默认名称就是git 的文件名称。另外没有项目版本号的概念"
   severity: blocker
   test: 6
@@ -98,12 +98,12 @@ skipped: 0
       issue: "移除 version 字段，调整 source/branch 字段语义"
     - path: "packages/core/src/rl-wrapper.ts"
       issue: "ProjectCreateOptions 和 createProject() 方法需要移除 version 参数"
-  missing:
-    - "重构 project wizard 为两阶段流程：第一阶段询问 workspace 路径和导入/新建选择；第二阶段根据选择分别处理导入（git 仓库+分支，自动提取项目名）或新建（现有字段，去除 version）"
+  resolution: "Plan 01-07 完全重构了 project wizard：实现两阶段流程（workspace 路径 → 导入/新建选择 → 模式特定输入），移除 version 字段，导入模式自动从 git URL 提取项目名称"
+  resolved_by: "01-07"
   debug_session: ".planning/debug/project-wizard-wrong-flow.md"
 
 - truth: "Device 配置向导应该先让用户指定 workspace 路径，然后让用户选择平台（与 workspace init 相同的平台选择流程）"
-  status: failed
+  status: resolved
   reason: "User reported: 同样要先让用户指定 workspace 路径，然后平台也是在 workspace init 一样，要让用户选择"
   severity: blocker
   test: 7
@@ -111,8 +111,6 @@ skipped: 0
   artifacts:
     - path: "apps/cli/src/wizards/device-wizard.ts"
       issue: "缺少 workspace 路径输入步骤；平台字段使用 type: 'input' 而非 type: 'list'；未导入 PLATFORMS 常量"
-  missing:
-    - "在设备名称之前添加 workspace 路径输入（参考 workspace-wizard.ts line 86-96）"
-    - "将平台字段从 type: 'input' 改为 type: 'list'，使用与 workspace wizard 相同的 PLATFORMS 选项列表"
-    - "需要将 PLATFORMS 常量提取到共享位置或在 device-wizard.ts 中复制定义"
+  resolution: "Plan 01-08 修复了所有问题：提取 PLATFORMS 常量到 packages/core/src/constants.ts，device wizard 添加 workspace 路径选择（默认当前目录），平台改为列表选择（56 个选项）"
+  resolved_by: "01-08"
   debug_session: ""
