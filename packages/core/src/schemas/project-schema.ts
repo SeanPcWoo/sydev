@@ -11,7 +11,7 @@ export const projectSchema = z.object({
     'uorb_pubsub',
     'vsoa_pubsub',
     'fast_dds_pubsub'
-  ]).default('app'),
+  ]).optional(),
   type: z.enum([
     'cmake',
     'automake',
@@ -21,10 +21,10 @@ export const projectSchema = z.object({
     'cython',
     'go',
     'javascript'
-  ]).default('cmake'),
+  ]).optional(),
   source: z.string().optional(),
   branch: z.string().optional(),
-  debugLevel: z.enum(['debug', 'release']).default('release'),
+  debugLevel: z.enum(['debug', 'release']).optional(),
   makeTool: z.enum(['make', 'ninja']).default('make')
 });
 

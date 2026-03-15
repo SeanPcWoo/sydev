@@ -85,16 +85,6 @@ export async function runProjectWizard(): Promise<void> {
       },
       {
         type: 'list',
-        name: 'debugLevel',
-        message: '调试级别:',
-        choices: [
-          { name: 'Release', value: 'release' },
-          { name: 'Debug', value: 'debug' }
-        ],
-        default: 'release'
-      },
-      {
-        type: 'list',
         name: 'makeTool',
         message: '构建工具:',
         choices: [
@@ -107,11 +97,8 @@ export async function runProjectWizard(): Promise<void> {
 
     config = {
       name: importAnswers.name.trim(),
-      template: 'app',
-      type: 'cmake',
       source: importAnswers.source.trim(),
       branch: importAnswers.branch.trim(),
-      debugLevel: importAnswers.debugLevel,
       makeTool: importAnswers.makeTool
     };
   } else {
@@ -214,13 +201,14 @@ export async function runProjectWizard(): Promise<void> {
     console.log(chalk.dim(`  模式: 导入已有 Git 工程`));
     console.log(chalk.dim(`  Git 仓库: ${config.source}`));
     console.log(chalk.dim(`  Git 分支: ${config.branch}`));
+    console.log(chalk.dim(`  构建工具: ${config.makeTool}`));
   } else {
     console.log(chalk.dim(`  模式: 新建工程`));
     console.log(chalk.dim(`  项目模板: ${config.template}`));
     console.log(chalk.dim(`  构建类型: ${config.type}`));
+    console.log(chalk.dim(`  调试级别: ${config.debugLevel}`));
+    console.log(chalk.dim(`  构建工具: ${config.makeTool}`));
   }
-  console.log(chalk.dim(`  调试级别: ${config.debugLevel}`));
-  console.log(chalk.dim(`  构建工具: ${config.makeTool}`));
 
   const { confirm } = await inquirer.prompt([
     {

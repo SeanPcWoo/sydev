@@ -145,10 +145,15 @@ export class RlWrapper {
       'create',
       `--name=${config.name}`
     ];
-    if (config.template) args.push(`--template=${config.template}`);
+    // --source 和 --template 互斥，source 优先
+    if (config.source) {
+      args.push(`--source=${config.source}`);
+      if (config.branch) args.push(`--branch=${config.branch}`);
+      args.push('--quiet');
+    } else {
+      if (config.template) args.push(`--template=${config.template}`);
+    }
     if (config.type) args.push(`--type=${config.type}`);
-    if (config.source) args.push(`--source=${config.source}`);
-    if (config.branch) args.push(`--branch=${config.branch}`);
     if (config.debugLevel) args.push(`--debug-level=${config.debugLevel}`);
     if (config.makeTool) args.push(`--make-tool=${config.makeTool}`);
 
