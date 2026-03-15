@@ -59,7 +59,7 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — Schema 定义 + TemplateManager CRUD 逻辑
+- [x] 02-01-PLAN.md — Schema 定义 + TemplateManager CRUD 逻辑
 - [ ] 02-02-PLAN.md — InitOrchestrator 全流程初始化编排器
 - [ ] 02-03-PLAN.md — CLI 命令层（template 子命令 + init --config）
 
@@ -88,7 +88,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. CLI 核心功能 | 8/9 | In progress | - |
-| 2. 模板与配置系统 | 0/3 | Planning complete | - |
+| 2. 模板与配置系统 | 1/3 | In progress | - |
 | 3. Web UI 与批量操作 | 0/0 | Not started | - |
 
 ---
