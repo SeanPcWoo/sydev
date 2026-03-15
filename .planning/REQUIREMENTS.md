@@ -145,7 +145,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | WEB-CONFIG-01 | Phase 3 | Pending |
 | WEB-CONFIG-02 | Phase 3 | Pending |
 | WEB-CONFIG-03 | Phase 3 | Pending |
-| WEB-CONFIG-04 | Phase 3 | Pending |
+| WEB-CONFIG-04 | Phase 3 | Complete |
 | WEB-STATUS-01 | Phase 3 | Pending |
 | WEB-STATUS-02 | Phase 3 | Pending |
 | WEB-STATUS-03 | Phase 3 | Pending |
