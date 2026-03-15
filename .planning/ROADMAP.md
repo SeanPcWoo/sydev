@@ -7,7 +7,7 @@
 ## Phases
 
 - [x] **Phase 1: CLI 核心功能** - 可工作的 CLI 工具，支持基本初始化、环境检查、交互式向导 (completed 2026-03-14)
-- [ ] **Phase 2: 模板与配置系统** - 模板系统、配置导入导出、单命令快速初始化
+- [x] **Phase 2: 模板与配置系统** - 模板系统、配置导入导出、单命令快速初始化 (completed 2026-03-15)
 - [ ] **Phase 3: Web UI 与批量操作** - Web 可视化界面、批量操作、性能优化
 
 ## Phase Details
@@ -56,7 +56,7 @@ Plans:
 4. 用户可以将配置导出为 JSON 文件，并从 JSON 配置文件导入配置
 5. 用户可以通过单条命令（如 `tool init --config config.json`）从配置文件完成全流程初始化
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 02-01-PLAN.md — Schema 定义 + TemplateManager CRUD 逻辑
@@ -88,7 +88,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. CLI 核心功能 | 8/9 | In progress | - |
-| 2. 模板与配置系统 | 2/3 | In Progress|  |
+| 2. 模板与配置系统 | 3/3 | Complete   | 2026-03-15 |
 | 3. Web UI 与批量操作 | 0/0 | Not started | - |
 
 ---
