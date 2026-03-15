@@ -23,7 +23,7 @@ importers:
 
   apps/cli:
     dependencies:
-      '@openswitch/core':
+      '@sydev/core':
         specifier: workspace:*
         version: link:../../packages/core
       chalk:

@@ -1,5 +1,5 @@
 ---
-status: complete
+status: diagnosed
 phase: 01-cli-core
 source: 01-01-SUMMARY.md, 01-02-SUMMARY.md, 01-03-SUMMARY.md, 01-04-SUMMARY.md, 01-05-SUMMARY.md, 01-06-SUMMARY.md
 started: 2026-03-14T08:15:00Z
@@ -90,17 +90,29 @@ skipped: 0
   reason: "User reported: 整个逻辑不对，首先还是要用户选择创建好的 workspace 的路径，默认情况，应该就是执行命令的所在目录。然后创建工程时，先是询问是导入已有git 工程，还是新建工程，如果是导入已有工程，那么直接让用户写 git 仓库地址和分支，并且工程的默认名称就是git 的文件名称。另外没有项目版本号的概念"
   severity: blocker
   test: 6
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "Project wizard 实现了完全错误的交互流程，缺少三个关键功能：1) 缺少 workspace 路径选择（应默认为当前目录）；2) 缺少导入/新建分支逻辑（导入模式询问 git 仓库地址和分支，项目名称默认为 git 仓库名；新建模式询问项目名称、模板等）；3) 错误包含 version 字段（用户明确表示没有项目版本号概念）。根本原因：初始设计时没有理解 RealEvo-Stream 工具链的实际工作流程。"
+  artifacts:
+    - path: "apps/cli/src/wizards/project-wizard.ts"
+      issue: "整个交互流程需要重构，添加 workspace 路径选择和导入/新建分支逻辑"
+    - path: "packages/core/src/schemas/project-schema.ts"
+      issue: "移除 version 字段，调整 source/branch 字段语义"
+    - path: "packages/core/src/rl-wrapper.ts"
+      issue: "ProjectCreateOptions 和 createProject() 方法需要移除 version 参数"
+  missing:
+    - "重构 project wizard 为两阶段流程：第一阶段询问 workspace 路径和导入/新建选择；第二阶段根据选择分别处理导入（git 仓库+分支，自动提取项目名）或新建（现有字段，去除 version）"
+  debug_session: ".planning/debug/project-wizard-wrong-flow.md"
 
 - truth: "Device 配置向导应该先让用户指定 workspace 路径，然后让用户选择平台（与 workspace init 相同的平台选择流程）"
   status: failed
   reason: "User reported: 同样要先让用户指定 workspace 路径，然后平台也是在 workspace init 一样，要让用户选择"
   severity: blocker
   test: 7
-  root_cause: ""
-  artifacts: []
-  missing: []
+  root_cause: "Device wizard 缺少两个关键功能：1) 未提示用户指定 workspace 路径（workspace wizard 在第一步就询问路径，device wizard 直接从设备名称开始）；2) 平台选择使用自由文本输入而非列表选择（workspace wizard 使用 type: 'list' 配合 PLATFORMS 常量提供结构化选择，device wizard 使用 type: 'input' 允许任意文本）"
+  artifacts:
+    - path: "apps/cli/src/wizards/device-wizard.ts"
+      issue: "缺少 workspace 路径输入步骤；平台字段使用 type: 'input' 而非 type: 'list'；未导入 PLATFORMS 常量"
+  missing:
+    - "在设备名称之前添加 workspace 路径输入（参考 workspace-wizard.ts line 86-96）"
+    - "将平台字段从 type: 'input' 改为 type: 'list'，使用与 workspace wizard 相同的 PLATFORMS 选项列表"
+    - "需要将 PLATFORMS 常量提取到共享位置或在 device-wizard.ts 中复制定义"
   debug_session: ""

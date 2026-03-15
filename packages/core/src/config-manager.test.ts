@@ -6,12 +6,14 @@ describe('ConfigManager', () => {
   describe('validate', () => {
     it('should validate valid workspace config', () => {
       const validConfig = {
-        baseVersion: '2.0.0',
-        platform: 'arm',
-        buildOptions: {
-          debug: true,
-          optimize: 'speed'
-        }
+        cwd: '/tmp/workspace',
+        basePath: './base',
+        platform: 'ARM64_GENERIC',
+        version: 'lts_3.6.5',
+        createbase: false,
+        build: false,
+        debugLevel: 'release',
+        os: 'sylixos'
       };
 
       const result = ConfigManager.validate(workspaceSchema, validConfig);
@@ -23,8 +25,8 @@ describe('ConfigManager', () => {
 
     it('should reject invalid workspace config with missing required fields', () => {
       const invalidConfig = {
-        platform: 'arm'
-        // missing baseVersion
+        platform: 'ARM64_GENERIC'
+        // missing cwd and basePath
       };
 
       const result = ConfigManager.validate(workspaceSchema, invalidConfig);
@@ -32,12 +34,13 @@ describe('ConfigManager', () => {
       expect(result.valid).toBe(false);
       expect(result.errors).toBeDefined();
       expect(result.errors?.length).toBeGreaterThan(0);
-      expect(result.errors?.[0]).toContain('baseVersion');
+      expect(result.errors?.[0]).toContain('cwd');
     });
 
     it('should reject invalid workspace config with wrong type', () => {
       const invalidConfig = {
-        baseVersion: '2.0.0',
+        cwd: '/tmp',
+        basePath: './base',
         platform: 'invalid-platform'
       };
 
@@ -69,16 +72,17 @@ describe('ConfigManager', () => {
   describe('exportToJson', () => {
     it('should export config to formatted JSON string', () => {
       const config = {
-        baseVersion: '2.0.0',
-        platform: 'arm'
+        cwd: '/tmp',
+        basePath: './base',
+        platform: 'ARM64_GENERIC'
       };
 
       const json = ConfigManager.exportToJson(config);
 
-      expect(json).toContain('"baseVersion"');
-      expect(json).toContain('"2.0.0"');
+      expect(json).toContain('"basePath"');
+      expect(json).toContain('"./base"');
       expect(json).toContain('"platform"');
-      expect(json).toContain('"arm"');
+      expect(json).toContain('"ARM64_GENERIC"');
       expect(JSON.parse(json)).toEqual(config);
     });
   });
@@ -86,15 +90,17 @@ describe('ConfigManager', () => {
   describe('importFromJson', () => {
     it('should import and validate valid JSON config', () => {
       const json = JSON.stringify({
-        baseVersion: '2.0.0',
-        platform: 'arm'
+        cwd: '/tmp',
+        basePath: './base',
+        platform: 'ARM64_GENERIC'
       });
 
       const result = ConfigManager.importFromJson(workspaceSchema, json);
 
       expect(result.valid).toBe(true);
-      expect(result.data?.baseVersion).toBe('2.0.0');
-      expect(result.data?.platform).toBe('arm');
+      expect(result.data?.cwd).toBe('/tmp');
+      expect(result.data?.basePath).toBe('./base');
+      expect(result.data?.platform).toBe('ARM64_GENERIC');
     });
 
     it('should reject invalid JSON syntax', () => {
@@ -109,7 +115,8 @@ describe('ConfigManager', () => {
 
     it('should reject valid JSON but invalid config', () => {
       const json = JSON.stringify({
-        baseVersion: '2.0.0',
+        cwd: '/tmp',
+        basePath: './base',
         platform: 'invalid-platform'
       });
 

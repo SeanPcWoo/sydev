@@ -76,6 +76,7 @@ export function checkToolchain(): ToolchainCheckResult {
 
   // 检查常见安装路径
   const commonPaths = [
+    '/opt/acoinfo/realevo-stream',
     '/opt/realevo',
     join(homedir(), 'realevo'),
     join(homedir(), '.realevo')
@@ -93,7 +94,7 @@ export function checkToolchain(): ToolchainCheckResult {
   return {
     installed: false,
     error: '未在常见安装路径中找到 RealEvo-Stream 工具链',
-    fixSuggestion: '请检查以下路径：/opt/realevo, ~/realevo, ~/.realevo，或设置环境变量 REALEVO_HOME 指向安装目录'
+    fixSuggestion: '请检查以下路径：/opt/acoinfo/realevo-stream, /opt/realevo, ~/realevo, ~/.realevo，或设置环境变量 REALEVO_HOME 指向安装目录'
   };
 }
 

@@ -11,14 +11,14 @@ describe('executeRlCommand', () => {
     vi.clearAllMocks();
   });
 
-  it('should execute rl command successfully and return output', async () => {
+  it('should execute command directly and return output', async () => {
     const mockProc = new EventEmitter() as any;
     mockProc.stdout = new EventEmitter();
     mockProc.stderr = new EventEmitter();
 
     vi.mocked(spawn).mockReturnValue(mockProc);
 
-    const promise = executeRlCommand('workspace', ['init']);
+    const promise = executeRlCommand('rl-workspace', ['init']);
 
     mockProc.stdout.emit('data', 'Workspace initialized\n');
     mockProc.emit('close', 0);
@@ -27,7 +27,7 @@ describe('executeRlCommand', () => {
 
     expect(result.success).toBe(true);
     expect(result.stdout).toContain('Workspace initialized');
-    expect(spawn).toHaveBeenCalledWith('rl', ['workspace', 'init']);
+    expect(spawn).toHaveBeenCalledWith('rl-workspace', ['init'], { cwd: undefined, env: process.env, shell: true });
   });
 
   it('should handle command failure and parse error', async () => {
@@ -37,7 +37,7 @@ describe('executeRlCommand', () => {
 
     vi.mocked(spawn).mockReturnValue(mockProc);
 
-    const promise = executeRlCommand('workspace', ['init']);
+    const promise = executeRlCommand('rl-workspace', ['init']);
 
     mockProc.stderr.emit('data', 'Error: permission denied\n');
     mockProc.emit('close', 1);
@@ -60,7 +60,7 @@ describe('executeRlCommand', () => {
     const outputSpy = vi.fn();
     progressReporter.on('output', outputSpy);
 
-    const promise = executeRlCommand('workspace', ['init'], progressReporter);
+    const promise = executeRlCommand('rl-workspace', ['init'], progressReporter);
 
     mockProc.stdout.emit('data', 'Progress output\n');
     mockProc.emit('close', 0);
@@ -77,14 +77,14 @@ describe('executeRlCommand', () => {
 
     vi.mocked(spawn).mockReturnValue(mockProc);
 
-    const promise = executeRlCommand('workspace', ['init']);
+    const promise = executeRlCommand('rl-workspace', ['init']);
 
     mockProc.emit('error', new Error('ENOENT'));
 
     const result = await promise;
 
     expect(result.success).toBe(false);
-    expect(result.error).toContain('执行 rl 命令失败');
+    expect(result.error).toContain('执行 rl-workspace 命令失败');
     expect(result.fixSuggestion).toContain('RealEvo-Stream');
   });
 
@@ -95,7 +95,7 @@ describe('executeRlCommand', () => {
 
     vi.mocked(spawn).mockReturnValue(mockProc);
 
-    const promise = executeRlCommand('workspace', ['init']);
+    const promise = executeRlCommand('rl-project', ['create']);
 
     mockProc.stderr.emit('data', 'Error: path not found\n');
     mockProc.emit('close', 1);
@@ -114,7 +114,7 @@ describe('executeRlCommand', () => {
 
     vi.mocked(spawn).mockReturnValue(mockProc);
 
-    const promise = executeRlCommand('workspace', ['init']);
+    const promise = executeRlCommand('rl-build', ['--all']);
 
     mockProc.stderr.emit('data', 'Error: version mismatch\n');
     mockProc.emit('close', 1);
@@ -135,7 +135,7 @@ describe('RlWrapper', () => {
     progressReporter = new ProgressReporter();
   });
 
-  it('should call initWorkspace and emit progress events', async () => {
+  it('should call initWorkspace with correct rl-workspace command and = args', async () => {
     const mockProc = new EventEmitter() as any;
     mockProc.stdout = new EventEmitter();
     mockProc.stderr = new EventEmitter();
@@ -147,9 +147,10 @@ describe('RlWrapper', () => {
 
     const wrapper = new RlWrapper(progressReporter);
     const promise = wrapper.initWorkspace({
-      baseVersion: '2.0.0',
-      platform: 'arm',
-      path: '/tmp/workspace'
+      cwd: '/tmp/workspace',
+      basePath: './base',
+      platform: 'ARM64_GENERIC',
+      version: 'default'
     });
 
     mockProc.emit('close', 0);
@@ -159,19 +160,49 @@ describe('RlWrapper', () => {
     expect(result.success).toBe(true);
     expect(stepSpy).toHaveBeenCalledWith({ name: '初始化 Workspace', progress: 0 });
     expect(stepSpy).toHaveBeenCalledWith({ name: '初始化 Workspace', progress: 100 });
-    expect(spawn).toHaveBeenCalledWith('rl', [
-      'workspace',
+    expect(spawn).toHaveBeenCalledWith('rl-workspace', [
       'init',
-      '--base',
-      '2.0.0',
-      '--platform',
-      'arm',
-      '--path',
-      '/tmp/workspace'
-    ]);
+      '--base=./base',
+      '--platform=ARM64_GENERIC',
+      '--version=default'
+    ], { cwd: '/tmp/workspace', env: process.env, shell: true });
   });
 
-  it('should call createProject and emit progress events', async () => {
+  it('should pass optional workspace params when provided', async () => {
+    const mockProc = new EventEmitter() as any;
+    mockProc.stdout = new EventEmitter();
+    mockProc.stderr = new EventEmitter();
+
+    vi.mocked(spawn).mockReturnValue(mockProc);
+
+    const wrapper = new RlWrapper(progressReporter);
+    const promise = wrapper.initWorkspace({
+      cwd: '/tmp/workspace',
+      basePath: './base',
+      platform: 'X86_64',
+      version: 'lts_3.6.5',
+      createbase: true,
+      build: false,
+      debugLevel: 'debug',
+      os: 'sylixos'
+    });
+
+    mockProc.emit('close', 0);
+    await promise;
+
+    expect(spawn).toHaveBeenCalledWith('rl-workspace', [
+      'init',
+      '--base=./base',
+      '--platform=X86_64',
+      '--version=lts_3.6.5',
+      '--createbase=true',
+      '--build=false',
+      '--debug_level=debug',
+      '--os=sylixos'
+    ], { cwd: '/tmp/workspace', env: process.env, shell: true });
+  });
+
+  it('should call createProject with correct rl-project command', async () => {
     const mockProc = new EventEmitter() as any;
     mockProc.stdout = new EventEmitter();
     mockProc.stderr = new EventEmitter();
@@ -184,8 +215,8 @@ describe('RlWrapper', () => {
     const wrapper = new RlWrapper(progressReporter);
     const promise = wrapper.createProject({
       name: 'test-project',
-      type: 'app',
-      path: '/tmp/project'
+      template: 'app',
+      type: 'cmake'
     });
 
     mockProc.emit('close', 0);
@@ -195,16 +226,50 @@ describe('RlWrapper', () => {
     expect(result.success).toBe(true);
     expect(stepSpy).toHaveBeenCalledWith({ name: '创建项目 test-project', progress: 0 });
     expect(stepSpy).toHaveBeenCalledWith({ name: '创建项目 test-project', progress: 100 });
-    expect(spawn).toHaveBeenCalledWith('rl', [
-      'project',
+    expect(spawn).toHaveBeenCalledWith('rl-project', [
       'create',
-      '--name',
-      'test-project',
-      '--type',
-      'app',
-      '--path',
-      '/tmp/project'
-    ]);
+      '--name=test-project',
+      '--template=app',
+      '--type=cmake'
+    ], { cwd: undefined, env: process.env, shell: true });
+  });
+
+  it('should call addDevice with correct rl-device command', async () => {
+    const mockProc = new EventEmitter() as any;
+    mockProc.stdout = new EventEmitter();
+    mockProc.stderr = new EventEmitter();
+
+    vi.mocked(spawn).mockReturnValue(mockProc);
+
+    const stepSpy = vi.fn();
+    progressReporter.on('step', stepSpy);
+
+    const wrapper = new RlWrapper(progressReporter);
+    const promise = wrapper.addDevice({
+      name: 'my-device',
+      ip: '192.168.1.100',
+      platform: 'ARM64_GENERIC',
+      ssh: 22,
+      username: 'root',
+      password: 'root'
+    });
+
+    mockProc.emit('close', 0);
+
+    const result = await promise;
+
+    expect(result.success).toBe(true);
+    expect(stepSpy).toHaveBeenCalledWith({ name: '添加设备 my-device', progress: 0 });
+    expect(stepSpy).toHaveBeenCalledWith({ name: '添加设备 my-device', progress: 100 });
+    expect(spawn).toHaveBeenCalledWith('rl-device', [
+      'add',
+      '--name=my-device',
+      '--ip=192.168.1.100',
+      '--platform=ARM64_GENERIC',
+      '--ssh=22',
+      '--user=root',
+      '--password=root'
+    ], { cwd: undefined, env: process.env, shell: true });
   });
 
   it('should handle errors in initWorkspace', async () => {
@@ -216,9 +281,10 @@ describe('RlWrapper', () => {
 
     const wrapper = new RlWrapper(progressReporter);
     const promise = wrapper.initWorkspace({
-      baseVersion: '2.0.0',
-      platform: 'arm',
-      path: '/tmp/workspace'
+      cwd: '/tmp/workspace',
+      basePath: './base',
+      platform: 'ARM64_GENERIC',
+      version: 'default'
     });
 
     mockProc.stderr.emit('data', 'Error: permission denied\n');

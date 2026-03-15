@@ -18,7 +18,19 @@
       "WebFetch(domain:leoy.blog)",
       "Bash(grep:*)",
       "Bash(find:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(ls:*)",
+      "Bash(/tmp/phase1_verification.md:*)",
+      "Read(//tmp/**)",
+      "Bash(cat:*)",
+      "Bash(pnpm test:*)",
+      "Bash(rl-workspace:*)",
+      "Bash(rl-project:*)",
+      "Bash(rl-device:*)",
+      "Bash(rl-build:*)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm remove:*)",
+      "Bash(echo:*)"
     ]
   }
 }

@@ -80,6 +80,7 @@ describe('env-checker', () => {
     it('should check common installation paths when REALEVO_HOME not set', () => {
       delete process.env.REALEVO_HOME;
       vi.mocked(fs.existsSync)
+        .mockReturnValueOnce(false) // /opt/acoinfo/realevo-stream
         .mockReturnValueOnce(false) // /opt/realevo
         .mockReturnValueOnce(true);  // ~/realevo
 
