@@ -36,7 +36,7 @@ Plans:
 - [x] 01-04-PLAN.md — 交互式向导（workspace、project、device）
 - [x] 01-05-PLAN.md — Shell 命令自动补全
 - [x] 01-06-PLAN.md — 修复环境检查器命令检测和错误消息（gap closure）
-- [ ] 01-07-PLAN.md — 重构 Project 创建向导（gap closure）
+- [x] 01-07-PLAN.md — 重构 Project 创建向导（gap closure）
 - [ ] 01-08-PLAN.md — 修复 Device 配置向导（gap closure）
 
 ---
@@ -81,7 +81,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. CLI 核心功能 | 6/8 | In progress | - |
+| 1. CLI 核心功能 | 7/8 | In progress | - |
 | 2. 模板与配置系统 | 0/0 | Not started | - |
 | 3. Web UI 与批量操作 | 0/0 | Not started | - |
 
