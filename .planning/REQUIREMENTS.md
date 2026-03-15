@@ -65,11 +65,11 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### WEB-TEMPLATE (Web 模板管理)
 
-- [ ] **WEB-TEMPLATE-01**: 用户可以在 Web 界面创建配置模板
-- [ ] **WEB-TEMPLATE-02**: 用户可以在 Web 界面编辑已有模板
-- [ ] **WEB-TEMPLATE-03**: 用户可以在 Web 界面导入模板（JSON 文件上传）
-- [ ] **WEB-TEMPLATE-04**: 用户可以在 Web 界面导出模板（JSON 文件下载）
-- [ ] **WEB-TEMPLATE-05**: 用户可以在 Web 界面删除模板
+- [x] **WEB-TEMPLATE-01**: 用户可以在 Web 界面创建配置模板
+- [x] **WEB-TEMPLATE-02**: 用户可以在 Web 界面编辑已有模板
+- [x] **WEB-TEMPLATE-03**: 用户可以在 Web 界面导入模板（JSON 文件上传）
+- [x] **WEB-TEMPLATE-04**: 用户可以在 Web 界面导出模板（JSON 文件下载）
+- [x] **WEB-TEMPLATE-05**: 用户可以在 Web 界面删除模板
 
 ### WEB-EXPORT (Web 导出功能)
 
@@ -149,11 +149,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | WEB-STATUS-01 | Phase 3 | Complete |
 | WEB-STATUS-02 | Phase 3 | Complete |
 | WEB-STATUS-03 | Phase 3 | Complete |
-| WEB-TEMPLATE-01 | Phase 3 | Pending |
-| WEB-TEMPLATE-02 | Phase 3 | Pending |
-| WEB-TEMPLATE-03 | Phase 3 | Pending |
-| WEB-TEMPLATE-04 | Phase 3 | Pending |
-| WEB-TEMPLATE-05 | Phase 3 | Pending |
+| WEB-TEMPLATE-01 | Phase 3 | Complete |
+| WEB-TEMPLATE-02 | Phase 3 | Complete |
+| WEB-TEMPLATE-03 | Phase 3 | Complete |
+| WEB-TEMPLATE-04 | Phase 3 | Complete |
+| WEB-TEMPLATE-05 | Phase 3 | Complete |
 | WEB-EXPORT-01 | Phase 3 | Pending |
 | WEB-EXPORT-02 | Phase 3 | Pending |
 | BATCH-01 | Phase 3 | Pending |
