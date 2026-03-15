@@ -11,6 +11,7 @@ import { deviceCommand } from './commands/device.js';
 import { createCompletionCommand } from './commands/completion.js';
 import { templateCommand } from './commands/template.js';
 import { initCommand } from './commands/init.js';
+import { webCommand } from './commands/web.js';
 import { formatHelp } from './utils/help-formatter.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -52,6 +53,11 @@ program.hook('preAction', async (thisCommand, actionCommand) => {
     return;
   }
 
+  // 跳过 web 命令的环境检查（Web 服务不需要 RealEvo-Stream 环境）
+  if (argv.includes('web')) {
+    return;
+  }
+
   // 执行环境检查
   const envStatus = await checkEnvironment();
   if (!envStatus.overall) {
@@ -73,6 +79,7 @@ program.addCommand(projectCommand);
 program.addCommand(deviceCommand);
 program.addCommand(templateCommand);
 program.addCommand(initCommand);
+program.addCommand(webCommand);
 program.addCommand(createCompletionCommand(program));
 
 // 解析命令行参数

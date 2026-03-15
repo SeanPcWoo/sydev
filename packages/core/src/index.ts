@@ -50,6 +50,11 @@ export {
 // 初始化编排
 export { InitOrchestrator, type InitResult, type InitOptions, type StepError } from './init-orchestrator.js';
 
+// Web 服务器
+export { createWebServer, type WebServerOptions, type WebServerInstance } from './web-server.js';
+export { registerApiRoutes } from './api-routes.js';
+export { WsBridge } from './ws-bridge.js';
+
 // 常量
 export { PLATFORMS } from './constants.js';
 
