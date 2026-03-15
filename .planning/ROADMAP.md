@@ -79,7 +79,14 @@ Plans:
 4. 用户可以从 Web 界面导出 CLI 配置文件和复制 CLI 命令
 5. 用户可以通过配置文件一次性创建多个项目或配置多个设备，并看到每个操作的独立进度反馈
 
-**Plans**: TBD
+**Plans:** 5 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — Web 基础架构（后端服务器 + 前端脚手架 + sydev web 命令）
+- [ ] 03-02-PLAN.md — 配置表单页面（Workspace/Project/Device 表单 + API 端点）
+- [ ] 03-03-PLAN.md — 状态面板（Workspace/项目/设备状态卡片）
+- [ ] 03-04-PLAN.md — 模板管理界面（CRUD + 导入导出）
+- [ ] 03-05-PLAN.md — CLI 导出 + 批量操作（配置导出 + 批量创建 + 进度跟踪）
 
 ---
 
@@ -89,7 +96,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. CLI 核心功能 | 8/9 | In progress | - |
 | 2. 模板与配置系统 | 3/3 | Complete   | 2026-03-15 |
-| 3. Web UI 与批量操作 | 0/0 | Not started | - |
+| 3. Web UI 与批量操作 | 0/5 | Planning complete | - |
 
 ---
 *Last updated: 2026-03-15*
