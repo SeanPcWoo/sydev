@@ -49,7 +49,7 @@ decisions:
     rationale: "ESM 原生支持，丰富的提示类型（input, list, confirm, password），成熟稳定"
   - choice: "使用 ora spinner 显示进度"
     rationale: "视觉反馈友好，与 ProgressReporter 事件模型完美集成"
-  - choice: "设备配置保存到 .openswitch/devices.json"
+  - choice: "设备配置保存到 .sydev/devices.json"
     rationale: "本地文件存储简单可靠，为后续模板系统和配置管理奠定基础"
   - choice: "在 validate 函数中实现即时验证"
     rationale: "用户输入时立即反馈错误，避免填写完整表单后才发现问题"
@@ -101,7 +101,7 @@ metrics:
   - IP 地址格式验证（IPv4，每段 0-255）
   - 端口范围验证（1-65535）
   - 密码输入（mask 显示）
-  - 保存配置到 .openswitch/devices.json
+  - 保存配置到 .sydev/devices.json
 - 更新 project create 和 device add 命令
 - **Commit:** f4b87cb
 

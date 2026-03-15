@@ -30,7 +30,11 @@
       "Bash(rl-build:*)",
       "Bash(pnpm add:*)",
       "Bash(pnpm remove:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(git:*)",
+      "Bash(for plan:*)",
+      "Read(//home/sean/project/**)",
+      "Bash(mv openswitch:*)"
     ]
   }
 }
