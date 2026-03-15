@@ -1,10 +1,13 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
 import { join } from 'path';
+import { rmSync, existsSync } from 'fs';
+import { execSync } from 'child_process';
 import {
   ConfigManager,
   workspaceSchema,
   RlWrapper,
+  PLATFORMS,
   type WorkspaceConfig
 } from '@sydev/core';
 import { createCliProgressReporter } from '../utils/cli-progress.js';
@@ -12,19 +15,68 @@ import { createCliProgressReporter } from '../utils/cli-progress.js';
 export async function runWorkspaceWizard(): Promise<void> {
   console.log(chalk.bold.cyan('\n🚀 Workspace 初始化向导\n'));
 
+  // 使用普通 input 输入 workspace 路径
   const answers = await inquirer.prompt([
     {
       type: 'input',
-      name: 'baseVersion',
-      message: 'Base 版本:',
-      default: '2.0.0',
+      name: 'cwd',
+      message: 'Workspace 创建路径:',
+      default: process.cwd(),
       validate: (input: string) => {
         if (!input || input.trim().length === 0) {
-          return 'Base 版本不能为空';
+          return '工作路径不能为空';
         }
-        // 简单的版本号格式验证
-        if (!/^\d+\.\d+\.\d+$/.test(input.trim())) {
-          return '版本号格式应为 x.y.z（如 2.0.0）';
+        return true;
+      }
+    },
+    {
+      type: 'list',
+      name: 'version',
+      message: 'Base 版本:',
+      choices: [
+        { name: 'default (默认，支持所有平台)', value: 'default' },
+        { name: 'ecs_3.6.5 (容器化开发专用)', value: 'ecs_3.6.5' },
+        { name: 'lts_3.6.5 (发行版，支持所有平台)', value: 'lts_3.6.5' },
+        { name: 'lts_3.6.5_compiled (预编译发行版)', value: 'lts_3.6.5_compiled' },
+        { name: 'research', value: 'research' },
+        { name: 'custom (自定义 libsylixos 仓库)', value: 'custom' }
+      ],
+      default: 'default'
+    },
+    {
+      type: 'input',
+      name: 'researchBranch',
+      message: 'research 仓库分支:',
+      default: 'master',
+      when: (answers: any) => answers.version === 'research'
+    },
+    {
+      type: 'input',
+      name: 'customRepo',
+      message: 'libsylixos Git 仓库地址:',
+      when: (answers: any) => answers.version === 'custom',
+      validate: (input: string) => {
+        if (!input || input.trim().length === 0) {
+          return '仓库地址不能为空';
+        }
+        return true;
+      }
+    },
+    {
+      type: 'input',
+      name: 'customBranch',
+      message: '仓库分支:',
+      default: 'master',
+      when: (answers: any) => answers.version === 'custom'
+    },
+    {
+      type: 'input',
+      name: 'basePath',
+      message: 'Base 目录路径:',
+      default: (answers: any) => `${answers.cwd.trim()}/.realevo/base`,
+      validate: (input: string) => {
+        if (!input || input.trim().length === 0) {
+          return 'Base 路径不能为空';
         }
         return true;
       }
@@ -33,57 +85,64 @@ export async function runWorkspaceWizard(): Promise<void> {
       type: 'list',
       name: 'platform',
       message: '目标平台:',
-      choices: [
-        { name: 'ARM', value: 'arm' },
-        { name: 'x86', value: 'x86' },
-        { name: 'MIPS', value: 'mips' },
-        { name: 'RISC-V', value: 'riscv' }
-      ],
-      default: 'arm'
-    },
-    {
-      type: 'confirm',
-      name: 'enableDebug',
-      message: '启用调试模式?',
-      default: false
+      choices: PLATFORMS,
+      default: 'ARM64_GENERIC'
     },
     {
       type: 'list',
-      name: 'optimize',
-      message: '优化级别:',
+      name: 'os',
+      message: '操作系统:',
       choices: [
-        { name: '无优化', value: 'none' },
-        { name: '优化大小', value: 'size' },
-        { name: '优化速度', value: 'speed' }
+        { name: 'SylixOS', value: 'sylixos' },
+        { name: 'Linux', value: 'linux' }
       ],
-      default: 'none'
+      default: 'sylixos'
     },
     {
-      type: 'input',
-      name: 'path',
-      message: 'Workspace 路径:',
-      default: process.cwd(),
-      validate: (input: string) => {
-        if (!input || input.trim().length === 0) {
-          return '路径不能为空';
-        }
-        return true;
-      }
+      type: 'list',
+      name: 'debugLevel',
+      message: '调试级别:',
+      choices: [
+        { name: 'Release', value: 'release' },
+        { name: 'Debug', value: 'debug' }
+      ],
+      default: 'release'
+    },
+    {
+      type: 'confirm',
+      name: 'createbase',
+      message: '是否创建新 Base?',
+      default: true,
+      when: (answers: any) => answers.version !== 'research' && answers.version !== 'custom'
+    },
+    {
+      type: 'confirm',
+      name: 'build',
+      message: '是否编译 Base?',
+      default: false,
+      when: (answers: any) => answers.version !== 'research' && answers.version !== 'custom'
     }
   ]);
 
-  // 构建配置对象
+  const isResearch = answers.version === 'research';
+  const isCustom = answers.version === 'custom';
+  const isCloneMode = isResearch || isCustom;
+  const cloneBranch = isResearch ? (answers.researchBranch || 'master') : (answers.customBranch || 'master');
+  const cloneRepo = isResearch
+    ? 'ssh://git@10.7.100.21:16783/sylixos/research/libsylixos.git'
+    : answers.customRepo?.trim();
+
   const config: WorkspaceConfig = {
-    baseVersion: answers.baseVersion.trim(),
+    cwd: answers.cwd.trim(),
+    basePath: answers.basePath.trim(),
     platform: answers.platform,
-    buildOptions: {
-      debug: answers.enableDebug,
-      optimize: answers.optimize
-    },
-    path: answers.path.trim()
+    version: isCloneMode ? 'lts_3.6.5' : answers.version,
+    createbase: isCloneMode ? true : (answers.createbase ?? false),
+    build: isCloneMode ? false : (answers.build ?? false),
+    debugLevel: answers.debugLevel,
+    os: answers.os
   };
 
-  // 使用 zod schema 验证配置
   const validation = ConfigManager.validate(workspaceSchema, config);
   if (!validation.valid) {
     console.error(chalk.red('\n✗ 配置验证失败:'));
@@ -91,13 +150,18 @@ export async function runWorkspaceWizard(): Promise<void> {
     process.exit(1);
   }
 
-  // 显示配置摘要
   console.log(chalk.bold('\n📋 配置摘要:'));
-  console.log(chalk.dim(`  Base 版本: ${config.baseVersion}`));
+  console.log(chalk.dim(`  工作路径: ${config.cwd}`));
+  console.log(chalk.dim(`  Base 路径: ${config.basePath}`));
   console.log(chalk.dim(`  平台: ${config.platform}`));
-  console.log(chalk.dim(`  调试模式: ${config.buildOptions?.debug ? '是' : '否'}`));
-  console.log(chalk.dim(`  优化级别: ${config.buildOptions?.optimize}`));
-  console.log(chalk.dim(`  路径: ${config.path}`));
+  console.log(chalk.dim(`  版本: ${isCloneMode ? `${answers.version} (lts_3.6.5, 分支: ${cloneBranch})` : config.version}`));
+  console.log(chalk.dim(`  操作系统: ${config.os}`));
+  console.log(chalk.dim(`  调试级别: ${config.debugLevel}`));
+  console.log(chalk.dim(`  创建 Base: ${config.createbase ? '是' : '否'}`));
+  console.log(chalk.dim(`  编译 Base: ${config.build ? '是' : '否'}`));
+  if (isCloneMode) {
+    console.log(chalk.dim(`  ${answers.version} 模式: 初始化后将替换 libsylixos (${cloneRepo})`));
+  }
 
   const { confirm } = await inquirer.prompt([
     {
@@ -113,25 +177,59 @@ export async function runWorkspaceWizard(): Promise<void> {
     return;
   }
 
-  // 执行初始化
   console.log(chalk.cyan('\n开始初始化...\n'));
 
   const progressReporter = createCliProgressReporter();
   const rlWrapper = new RlWrapper(progressReporter);
 
   const result = await rlWrapper.initWorkspace({
-    baseVersion: config.baseVersion,
+    cwd: config.cwd,
+    basePath: config.basePath,
     platform: config.platform,
-    path: config.path!
+    version: config.version,
+    createbase: config.createbase,
+    build: config.build,
+    debugLevel: config.debugLevel,
+    os: config.os
   });
 
-  if (result.success) {
+  if (result.success && !isCloneMode) {
     console.log(chalk.bold.green('\n✓ Workspace 初始化成功!\n'));
-  } else {
+  } else if (!result.success && !isCloneMode) {
     console.error(chalk.red(`\n✗ 初始化失败: ${result.error}\n`));
     if (result.fixSuggestion) {
       console.error(chalk.cyan(`建议: ${result.fixSuggestion}\n`));
     }
     process.exit(1);
+  } else if (isCloneMode) {
+    // clone 模式：停掉 spinner，不管 rl-workspace 成功与否都继续
+    progressReporter.emit('step', { name: '初始化 Workspace', progress: 100 });
+    if (!result.success) {
+      console.log(chalk.yellow(`\n⚠ rl-workspace 执行有错误，${answers.version} 模式继续处理...\n`));
+    }
+  }
+
+  // research/custom 模式：删除 libsylixos 并 clone 仓库
+  if (isCloneMode) {
+    const basePath = config.basePath;
+    const libsylixosPath = join(basePath, 'libsylixos');
+
+    if (existsSync(libsylixosPath)) {
+      console.log(chalk.cyan(`${answers.version} 模式: 正在删除 libsylixos 目录...`));
+      rmSync(libsylixosPath, { recursive: true, force: true });
+      console.log(chalk.dim(`  已删除 ${libsylixosPath}`));
+    }
+
+    console.log(chalk.cyan(`${answers.version} 模式: 正在 clone libsylixos 仓库 (分支: ${cloneBranch})...`));
+    try {
+      execSync(
+        `git clone -b ${cloneBranch} ${cloneRepo} libsylixos`,
+        { cwd: basePath, stdio: 'inherit' }
+      );
+      console.log(chalk.bold.green(`\n✓ ${answers.version} 版本 Workspace 初始化成功!\n`));
+    } catch (err: any) {
+      console.error(chalk.red(`\n✗ clone libsylixos 仓库失败: ${err.message}\n`));
+      process.exit(1);
+    }
   }
 }
