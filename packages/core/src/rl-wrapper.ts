@@ -1,4 +1,5 @@
 import { spawn } from 'child_process';
+import { mkdirSync, existsSync } from 'fs';
 import { ProgressReporter } from './progress-reporter.js';
 
 export interface RlCommandResult {
@@ -12,10 +13,16 @@ export interface RlCommandResult {
 export async function executeRlCommand(
   command: string,
   args: string[],
-  progressReporter?: ProgressReporter
+  progressReporter?: ProgressReporter,
+  cwd?: string
 ): Promise<RlCommandResult> {
   return new Promise((resolve) => {
-    const proc = spawn('rl', [command, ...args]);
+    // 确保 cwd 目录存在
+    if (cwd && !existsSync(cwd)) {
+      mkdirSync(cwd, { recursive: true });
+    }
+
+    const proc = spawn(command, args, { cwd, env: process.env, shell: true });
     let stdout = '';
     let stderr = '';
 
@@ -33,22 +40,21 @@ export async function executeRlCommand(
         resolve({ success: true, stdout });
       } else {
         const { error, fixSuggestion } = parseRlError(stderr || stdout);
-        resolve({ success: false, stderr, error, fixSuggestion });
+        resolve({ success: false, stdout, stderr, error, fixSuggestion });
       }
     });
 
     proc.on('error', (err) => {
       resolve({
         success: false,
-        error: `执行 rl 命令失败: ${err.message}`,
-        fixSuggestion: '请确认 RealEvo-Stream 已正确安装且 rl 命令在 PATH 中'
+        error: `执行 ${command} 命令失败: ${err.message}`,
+        fixSuggestion: '请确认 RealEvo-Stream 已正确安装且 rl-workspace, rl-project, rl-device, rl-build 命令在 PATH 中'
       });
     });
   });
 }
 
 function parseRlError(output: string): { error: string; fixSuggestion: string } {
-  // 识别常见错误模式
   if (output.includes('permission denied') || output.includes('权限不足')) {
     return {
       error: '权限不足',
@@ -73,31 +79,103 @@ function parseRlError(output: string): { error: string; fixSuggestion: string } 
   };
 }
 
+export interface WorkspaceInitOptions {
+  cwd: string;
+  basePath: string;
+  platform: string;
+  version: string;
+  createbase?: boolean;
+  build?: boolean;
+  debugLevel?: string;
+  os?: string;
+}
+
+export interface ProjectCreateOptions {
+  name: string;
+  template?: string;
+  type?: string;
+  source?: string;
+  branch?: string;
+  debugLevel?: string;
+  makeTool?: string;
+}
+
+export interface DeviceAddOptions {
+  name: string;
+  ip: string;
+  platform: string;
+  ssh?: number;
+  telnet?: number;
+  ftp?: number;
+  gdb?: number;
+  username?: string;
+  password?: string;
+}
+
 export class RlWrapper {
   constructor(private progressReporter: ProgressReporter) {}
 
-  async initWorkspace(config: { baseVersion: string; platform: string; path: string }): Promise<RlCommandResult> {
+  async initWorkspace(config: WorkspaceInitOptions): Promise<RlCommandResult> {
     this.progressReporter.emit('step', { name: '初始化 Workspace', progress: 0 });
-    const result = await executeRlCommand(
-      'workspace',
-      ['init', '--base', config.baseVersion, '--platform', config.platform, '--path', config.path],
-      this.progressReporter
-    );
+
+    const args = [
+      'init',
+      `--base=${config.basePath}`,
+      `--platform=${config.platform}`,
+      `--version=${config.version}`
+    ];
+    if (config.createbase !== undefined) args.push(`--createbase=${config.createbase}`);
+    if (config.build !== undefined) args.push(`--build=${config.build}`);
+    if (config.debugLevel) args.push(`--debug_level=${config.debugLevel}`);
+    if (config.os) args.push(`--os=${config.os}`);
+
+    const result = await executeRlCommand('rl-workspace', args, this.progressReporter, config.cwd);
     if (result.success) {
       this.progressReporter.emit('step', { name: '初始化 Workspace', progress: 100 });
     }
     return result;
   }
 
-  async createProject(config: { name: string; type: string; path: string }): Promise<RlCommandResult> {
+  async createProject(config: ProjectCreateOptions): Promise<RlCommandResult> {
     this.progressReporter.emit('step', { name: `创建项目 ${config.name}`, progress: 0 });
-    const result = await executeRlCommand(
-      'project',
-      ['create', '--name', config.name, '--type', config.type, '--path', config.path],
-      this.progressReporter
-    );
+
+    const args = [
+      'create',
+      `--name=${config.name}`
+    ];
+    if (config.template) args.push(`--template=${config.template}`);
+    if (config.type) args.push(`--type=${config.type}`);
+    if (config.source) args.push(`--source=${config.source}`);
+    if (config.branch) args.push(`--branch=${config.branch}`);
+    if (config.debugLevel) args.push(`--debug-level=${config.debugLevel}`);
+    if (config.makeTool) args.push(`--make-tool=${config.makeTool}`);
+
+    const result = await executeRlCommand('rl-project', args, this.progressReporter);
     if (result.success) {
       this.progressReporter.emit('step', { name: `创建项目 ${config.name}`, progress: 100 });
+    }
+    return result;
+  }
+
+  async addDevice(config: DeviceAddOptions): Promise<RlCommandResult> {
+    this.progressReporter.emit('step', { name: `添加设备 ${config.name}`, progress: 0 });
+
+    const args = [
+      'add',
+      `--name=${config.name}`,
+      `--ip=${config.ip}`,
+      `--platform=${config.platform}`
+    ];
+    if (config.ssh !== undefined) args.push(`--ssh=${config.ssh}`);
+    if (config.telnet !== undefined) args.push(`--telnet=${config.telnet}`);
+    if (config.ftp !== undefined) args.push(`--ftp=${config.ftp}`);
+    if (config.gdb !== undefined) args.push(`--gdb=${config.gdb}`);
+    if (config.username) args.push(`--user=${config.username}`);
+    if (config.password) args.push(`--password=${config.password}`);
+
+    const result = await executeRlCommand('rl-device', args, this.progressReporter);
+    if (result.success) {
+      this.progressReporter.emit('step', { name: `添加设备 ${config.name}`, progress: 100 });
     }
     return result;
   }
