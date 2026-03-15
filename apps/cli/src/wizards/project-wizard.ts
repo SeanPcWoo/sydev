@@ -248,7 +248,8 @@ export async function runProjectWizard(): Promise<void> {
     source: config.source,
     branch: config.branch,
     debugLevel: config.debugLevel,
-    makeTool: config.makeTool
+    makeTool: config.makeTool,
+    cwd: phase1.cwd
   });
 
   if (result.success) {
