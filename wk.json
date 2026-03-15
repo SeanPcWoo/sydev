@@ -1,0 +1,20 @@
+{
+    "schemaVersion": 1,
+    "workspace": {
+        "platform": "1ARM64_GENERIC",
+        "version": "lts_3.6.5_compiled",
+        "debugLevel": "release",
+        "os": "sylixos",
+        "createbase": true,
+        "build": false
+    },
+    "projects": [
+        {
+            "name": "jjj",
+            "template": "app",
+            "type": "cmake",
+            "debugLevel": "release",
+            "makeTool": "make"
+        }
+    ]
+}

@@ -3,8 +3,10 @@ import chalk from 'chalk';
 import inquirer from 'inquirer';
 import { readFileSync } from 'fs';
 import {
+  ConfigManager,
   InitOrchestrator,
   RlWrapper,
+  fullConfigSchema,
 } from '@sydev/core';
 import { createCliProgressReporter } from '../utils/cli-progress.js';
 
@@ -39,14 +41,28 @@ export const initCommand = new Command('init')
       return;
     }
 
-    // 如果配置文件没有 workspace，提示用户
     if (!config.workspace) {
       console.error(chalk.red('✗ 配置文件缺少 workspace 配置'));
       console.log(chalk.cyan('建议: 配置文件至少需要包含 workspace 的平台和版本信息'));
       return;
     }
 
-    // 交互收集 cwd 和 basePath（配置文件中可以不含）
+    // 先用占位值验证配置（cwd/basePath 在执行时收集，不要求配置文件包含）
+    const preCheck = ConfigManager.validate(fullConfigSchema, {
+      ...config,
+      workspace: {
+        ...config.workspace,
+        cwd: config.workspace.cwd || '/tmp',
+        basePath: config.workspace.basePath || '/tmp/base',
+      },
+    });
+    if (!preCheck.valid) {
+      console.error(chalk.red('✗ 配置验证失败:'));
+      preCheck.errors?.forEach((e) => console.error(chalk.yellow(`  - ${e}`)));
+      return;
+    }
+
+    // 验证通过后，交互收集 cwd 和 basePath
     if (!config.workspace.cwd) {
       const { cwd } = await inquirer.prompt([
         { type: 'input', name: 'cwd', message: 'Workspace 路径:', default: process.cwd() },
