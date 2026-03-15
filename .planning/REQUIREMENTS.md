@@ -52,10 +52,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### WEB-CONFIG (Web 配置界面)
 
-- [ ] **WEB-CONFIG-01**: 用户可以通过 Web 界面可视化配置 workspace 参数
-- [ ] **WEB-CONFIG-02**: 用户可以通过 Web 界面可视化配置项目参数
-- [ ] **WEB-CONFIG-03**: 用户可以通过 Web 界面可视化配置设备连接信息
-- [ ] **WEB-CONFIG-04**: 用户在 Web 界面输入错误参数时立即看到验证提示
+- [x] **WEB-CONFIG-01**: 用户可以通过 Web 界面可视化配置 workspace 参数
+- [x] **WEB-CONFIG-02**: 用户可以通过 Web 界面可视化配置项目参数
+- [x] **WEB-CONFIG-03**: 用户可以通过 Web 界面可视化配置设备连接信息
+- [x] **WEB-CONFIG-04**: 用户在 Web 界面输入错误参数时立即看到验证提示
 
 ### WEB-STATUS (Web 状态面板)
 
@@ -142,9 +142,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CLI-CONFIG-01 | Phase 2 | Complete |
 | CLI-CONFIG-02 | Phase 2 | Complete |
 | CLI-CONFIG-03 | Phase 2 | Complete |
-| WEB-CONFIG-01 | Phase 3 | Pending |
-| WEB-CONFIG-02 | Phase 3 | Pending |
-| WEB-CONFIG-03 | Phase 3 | Pending |
+| WEB-CONFIG-01 | Phase 3 | Complete |
+| WEB-CONFIG-02 | Phase 3 | Complete |
+| WEB-CONFIG-03 | Phase 3 | Complete |
 | WEB-CONFIG-04 | Phase 3 | Complete |
 | WEB-STATUS-01 | Phase 3 | Complete |
 | WEB-STATUS-02 | Phase 3 | Complete |
