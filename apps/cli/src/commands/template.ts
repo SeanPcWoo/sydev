@@ -117,6 +117,17 @@ templateCommand
     const templateContent = content as { type: string; data: any };
     console.log(chalk.cyan(`\n应用模板: ${meta.name} (${meta.type})\n`));
 
+    // 应用时收集 workspace 路径
+    const { cwd } = await inquirer.prompt([
+      { type: 'input', name: 'cwd', message: 'Workspace 路径:', default: process.cwd() },
+    ]);
+    const { basePath } = await inquirer.prompt([
+      {
+        type: 'input', name: 'basePath', message: 'Base 目录路径:',
+        default: `${cwd.trim()}/.realevo/base`,
+      },
+    ]);
+
     let config: Partial<FullConfig>;
 
     if (templateContent.type === 'full') {
@@ -137,7 +148,7 @@ templateCommand
 
       config = { schemaVersion: 1 } as any;
       if (selected.includes('workspace')) {
-        (config as any).workspace = fullData.workspace;
+        (config as any).workspace = { ...fullData.workspace, cwd: cwd.trim(), basePath: basePath.trim() };
       }
       const selProjects = (fullData.projects ?? []).filter(
         (p) => selected.includes(`project:${p.name}`)
@@ -153,7 +164,7 @@ templateCommand
         return;
       }
     } else if (templateContent.type === 'workspace') {
-      config = { schemaVersion: 1, workspace: templateContent.data } as any;
+      config = { schemaVersion: 1, workspace: { ...templateContent.data, cwd: cwd.trim(), basePath: basePath.trim() } } as any;
     } else if (templateContent.type === 'project') {
       console.error(chalk.yellow('⚠ project 模板需要在已有 workspace 中使用，请提供 workspace 配置'));
       return;
@@ -170,25 +181,35 @@ templateCommand
     }
 
     const progressReporter = createCliProgressReporter();
-    // 注册 error listener 避免 unhandled throw
-    progressReporter.on('error', () => {});
     const rlWrapper = new RlWrapper(progressReporter);
     const orchestrator = new InitOrchestrator(rlWrapper, progressReporter);
 
     console.log(chalk.cyan('开始应用模板...\n'));
-    const result = await orchestrator.execute(config);
+    const result = await orchestrator.execute(config, {
+      onStepError: async (step, error) => {
+        console.error(chalk.red(`\n✗ ${step} 失败: ${error}`));
+        const { shouldContinue } = await inquirer.prompt([
+          { type: 'confirm', name: 'shouldContinue', message: '是否继续执行后续步骤?', default: true },
+        ]);
+        return shouldContinue;
+      },
+    });
 
     if (result.success) {
       console.log(chalk.bold.green('\n✓ 模板应用成功!'));
       result.completedSteps.forEach((s) => console.log(chalk.dim(`  - ${s}`)));
     } else {
-      console.error(chalk.red(`\n✗ 应用失败: ${result.error}`));
+      if (result.failedSteps.length) {
+        console.log(chalk.yellow('\n失败的步骤:'));
+        result.failedSteps.forEach((f) => console.log(chalk.red(`  ✗ ${f.step}: ${f.error}`)));
+      }
       if (result.completedSteps.length) {
-        console.log(chalk.yellow('已完成的步骤:'));
+        console.log(chalk.green('已完成的步骤:'));
         result.completedSteps.forEach((s) => console.log(chalk.dim(`  - ${s}`)));
       }
-      console.log(chalk.cyan('建议: 修复问题后重新运行 sydev template apply ' + id));
     }
+
+    progressReporter.removeAllListeners();
   });
 
 // --- template delete <id> ---
@@ -228,9 +249,22 @@ templateCommand
 
     const content = await collectContent(templateType);
 
+    // export 导出的是可执行配置，需要 cwd/basePath
+    const { cwd } = await inquirer.prompt([
+      { type: 'input', name: 'cwd', message: 'Workspace 路径:', default: process.cwd() },
+    ]);
+    const { basePath } = await inquirer.prompt([
+      {
+        type: 'input', name: 'basePath', message: 'Base 目录路径:',
+        default: `${cwd.trim()}/.realevo/base`,
+      },
+    ]);
+
     let exportData: any;
     if (templateType === 'full') {
-      exportData = { schemaVersion: 1, ...content };
+      exportData = { schemaVersion: 1, ...content, workspace: { ...content.workspace, cwd: cwd.trim(), basePath: basePath.trim() } };
+    } else if (templateType === 'workspace') {
+      exportData = { schemaVersion: 1, workspace: { ...content, cwd: cwd.trim(), basePath: basePath.trim() } };
     } else {
       exportData = { schemaVersion: 1, [templateType]: content };
     }
@@ -286,9 +320,7 @@ templateCommand
 
 async function collectWorkspace() {
   return inquirer.prompt([
-    { type: 'input', name: 'cwd', message: 'Workspace 路径:', default: process.cwd() },
-    { type: 'input', name: 'basePath', message: 'Base 目录路径:', default: `${process.cwd()}/.realevo/base` },
-    { type: 'input', name: 'platform', message: '目标平台:', default: 'ARM64_GENERIC' },
+    { type: 'list', name: 'platform', message: '目标平台:', choices: ['ARM64_GENERIC', 'ARM64_A53', 'ARM64_A55', 'ARM64_A57', 'ARM64_A72', 'X86_64', 'RISCV_GC64', 'LOONGARCH64'], default: 'ARM64_GENERIC' },
     { type: 'list', name: 'version', message: 'Base 版本:', choices: ['default', 'ecs_3.6.5', 'lts_3.6.5', 'lts_3.6.5_compiled', 'research', 'custom'], default: 'default' },
     { type: 'list', name: 'debugLevel', message: '调试级别:', choices: ['release', 'debug'], default: 'release' },
     { type: 'list', name: 'os', message: '操作系统:', choices: ['sylixos', 'linux'], default: 'sylixos' },
@@ -298,9 +330,54 @@ async function collectWorkspace() {
 }
 
 async function collectProject() {
+  const { mode } = await inquirer.prompt([
+    {
+      type: 'list', name: 'mode', message: '选择操作:',
+      choices: [
+        { name: '导入已有 Git 工程', value: 'import' },
+        { name: '新建工程', value: 'create' },
+      ],
+    },
+  ]);
+
+  if (mode === 'import') {
+    return inquirer.prompt([
+      { type: 'input', name: 'source', message: 'Git 仓库地址:', validate: (v: string) => v.trim() ? true : 'Git 仓库地址不能为空' },
+      { type: 'input', name: 'branch', message: 'Git 分支:', default: 'master' },
+      {
+        type: 'input', name: 'name', message: '项目名称:',
+        default: (answers: any) => {
+          const match = (answers.source?.trim() || '').match(/\/([^/]+?)(\.git)?$/);
+          return match ? match[1] : '';
+        },
+        validate: (v: string) => v.trim().length >= 3 ? true : '至少 3 个字符',
+      },
+      { type: 'list', name: 'makeTool', message: '构建工具:', choices: ['make', 'ninja'], default: 'make' },
+    ]);
+  }
+
   return inquirer.prompt([
     { type: 'input', name: 'name', message: '项目名称:', validate: (v: string) => v.trim().length >= 3 ? true : '至少 3 个字符' },
-    { type: 'list', name: 'template', message: '项目模板:', choices: ['app', 'lib', 'common', 'ko', 'python_native_lib', 'uorb_pubsub', 'vsoa_pubsub', 'fast_dds_pubsub', '(无)'], default: 'app', filter: (v: string) => v === '(无)' ? undefined : v },
+    {
+      type: 'list', name: 'template', message: '项目模板:',
+      choices: [
+        { name: '应用程序 (app)', value: 'app' },
+        { name: '库 (lib)', value: 'lib' },
+        { name: '公共模块 (common)', value: 'common' },
+        { name: '内核模块 (ko)', value: 'ko' },
+        { name: 'Python 原生库 (python_native_lib)', value: 'python_native_lib' },
+        { name: 'uORB 发布订阅 (uorb_pubsub)', value: 'uorb_pubsub' },
+        { name: 'VSOA 发布订阅 (vsoa_pubsub)', value: 'vsoa_pubsub' },
+        { name: 'Fast DDS 发布订阅 (fast_dds_pubsub)', value: 'fast_dds_pubsub' },
+      ],
+      default: 'app',
+    },
+    {
+      type: 'list', name: 'type', message: '构建类型:',
+      choices: ['cmake', 'automake', 'realevo', 'ros2', 'python', 'cython', 'go', 'javascript'],
+      default: 'cmake',
+    },
+    { type: 'list', name: 'debugLevel', message: '调试级别:', choices: ['release', 'debug'], default: 'release' },
     { type: 'list', name: 'makeTool', message: '构建工具:', choices: ['make', 'ninja'], default: 'make' },
   ]);
 }
@@ -311,7 +388,7 @@ async function collectDevice() {
     { type: 'input', name: 'ip', message: 'IP 地址:', validate: (v: string) => /^\d{1,3}(\.\d{1,3}){3}$/.test(v) ? true : '请输入有效的 IPv4 地址' },
     { type: 'input', name: 'platform', message: '平台:', default: 'ARM64_GENERIC' },
     { type: 'input', name: 'username', message: '用户名:', default: 'root' },
-    { type: 'input', name: 'password', message: '密码:', default: '' },
+    { type: 'input', name: 'password', message: '密码:', default: 'root' },
     { type: 'number', name: 'ssh', message: 'SSH 端口:', default: 22 },
     { type: 'number', name: 'telnet', message: 'Telnet 端口:', default: 23 },
     { type: 'number', name: 'ftp', message: 'FTP 端口:', default: 21 },
@@ -331,7 +408,7 @@ async function collectContent(type: TemplateType): Promise<any> {
   const projects = [];
   let addMore = true;
   const { addProjects } = await inquirer.prompt([
-    { type: 'confirm', name: 'addProjects', message: '添加项目?', default: false },
+    { type: 'confirm', name: 'addProjects', message: '添加项目?', default: true },
   ]);
   if (addProjects) {
     while (addMore) {
@@ -346,7 +423,7 @@ async function collectContent(type: TemplateType): Promise<any> {
 
   const devices = [];
   const { addDevices } = await inquirer.prompt([
-    { type: 'confirm', name: 'addDevices', message: '添加设备?', default: false },
+    { type: 'confirm', name: 'addDevices', message: '添加设备?', default: true },
   ]);
   if (addDevices) {
     addMore = true;

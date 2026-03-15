@@ -1,0 +1,16 @@
+{
+  "type": "full",
+  "data": {
+    "schemaVersion": 1,
+    "workspace": {
+      "cwd": "/home/sean/project/test2",
+      "basePath": "/home/sean/project/test2/.realevo/base",
+      "platform": "ARM64_GENERIC",
+      "version": "lts_3.6.5_compiled",
+      "createbase": true,
+      "build": false,
+      "debugLevel": "release",
+      "os": "sylixos"
+    }
+  }
+}

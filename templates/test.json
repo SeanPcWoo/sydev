@@ -1,0 +1,23 @@
+{
+  "type": "full",
+  "data": {
+    "schemaVersion": 1,
+    "workspace": {
+      "platform": "ARM64_GENERIC",
+      "version": "lts_3.6.5_compiled",
+      "createbase": true,
+      "build": false,
+      "debugLevel": "release",
+      "os": "sylixos"
+    },
+    "projects": [
+      {
+        "name": "test",
+        "template": "app",
+        "type": "cmake",
+        "debugLevel": "release",
+        "makeTool": "make"
+      }
+    ]
+  }
+}

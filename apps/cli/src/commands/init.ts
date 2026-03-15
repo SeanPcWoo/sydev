@@ -41,8 +41,6 @@ export const initCommand = new Command('init')
     console.log(chalk.cyan('\n开始全流程初始化...\n'));
 
     const progressReporter = createCliProgressReporter();
-    // 注册 error listener 避免 unhandled throw
-    progressReporter.on('error', () => {});
     const rlWrapper = new RlWrapper(progressReporter);
     const orchestrator = new InitOrchestrator(rlWrapper, progressReporter);
 
@@ -63,4 +61,6 @@ export const initCommand = new Command('init')
       }
       console.log(chalk.cyan('\n建议: 修复问题后重新运行 sydev init --config ' + opts.config));
     }
+
+    progressReporter.removeAllListeners();
   });

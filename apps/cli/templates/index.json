@@ -1,0 +1,12 @@
+{
+  "templates": [
+    {
+      "id": "rk3568-64bit",
+      "name": "rk3568-64bit",
+      "description": "rk3568 64 bit lts",
+      "type": "full",
+      "createdAt": "2026-03-15T11:30:48.015Z",
+      "updatedAt": "2026-03-15T11:30:48.015Z"
+    }
+  ]
+}
