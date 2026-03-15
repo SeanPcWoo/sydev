@@ -1,9 +1,9 @@
 ---
-status: resolved
+status: diagnosed
 phase: 01-cli-core
 source: 01-01-SUMMARY.md, 01-02-SUMMARY.md, 01-03-SUMMARY.md, 01-04-SUMMARY.md, 01-05-SUMMARY.md, 01-06-SUMMARY.md, 01-07-SUMMARY.md, 01-08-SUMMARY.md
 started: 2026-03-14T08:15:00Z
-updated: 2026-03-15T14:35:00Z
+updated: 2026-03-15T14:45:00Z
 ---
 
 ## Current Test
@@ -66,7 +66,7 @@ result: pass
 
 total: 11
 passed: 8
-issues: 3
+issues: 4
 pending: 0
 skipped: 0
 
@@ -113,4 +113,24 @@ skipped: 0
       issue: "缺少 workspace 路径输入步骤；平台字段使用 type: 'input' 而非 type: 'list'；未导入 PLATFORMS 常量"
   resolution: "Plan 01-08 修复了所有问题：提取 PLATFORMS 常量到 packages/core/src/constants.ts，device wizard 添加 workspace 路径选择（默认当前目录），平台改为列表选择（56 个选项）"
   resolved_by: "01-08"
+  debug_session: ""
+
+- truth: "Project 和 Device 向导收集的 workspace 路径应该被实际使用，rl 命令应该在该路径下执行"
+  status: failed
+  reason: "User reported: 运行 project create 后报错 'Go to the workspace directory and run this command'，说明 rl-project 命令没有在正确的 workspace 目录下执行"
+  severity: blocker
+  test: 6
+  root_cause: "project-wizard 和 device-wizard 收集了 workspace 路径（phase1.cwd 和 answers.cwd），但在调用 rlWrapper.createProject() 和 rlWrapper.addDevice() 时没有传递这个路径。RlWrapper 的方法需要接受 cwd 参数，并传递给 executeRlCommand()。executeRlCommand() 已经支持 cwd 参数（line 16），但上层调用没有使用。"
+  artifacts:
+    - path: "apps/cli/src/wizards/project-wizard.ts"
+      issue: "收集了 phase1.cwd 但调用 createProject() 时没有传递（line 244-252）"
+    - path: "apps/cli/src/wizards/device-wizard.ts"
+      issue: "收集了 answers.cwd 但调用 addDevice() 时没有传递"
+    - path: "packages/core/src/rl-wrapper.ts"
+      issue: "createProject() 和 addDevice() 方法不接受 cwd 参数，无法传递给 executeRlCommand()"
+  missing:
+    - "RlWrapper.createProject() 添加 cwd 参数，传递给 executeRlCommand()"
+    - "RlWrapper.addDevice() 添加 cwd 参数，传递给 executeRlCommand()"
+    - "project-wizard 调用 createProject() 时传递 phase1.cwd"
+    - "device-wizard 调用 addDevice() 时传递 answers.cwd"
   debug_session: ""
