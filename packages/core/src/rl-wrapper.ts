@@ -98,6 +98,7 @@ export interface ProjectCreateOptions {
   branch?: string;
   debugLevel?: string;
   makeTool?: string;
+  cwd?: string;
 }
 
 export interface DeviceAddOptions {
@@ -110,6 +111,7 @@ export interface DeviceAddOptions {
   gdb?: number;
   username?: string;
   password?: string;
+  cwd?: string;
 }
 
 export class RlWrapper {
@@ -150,7 +152,7 @@ export class RlWrapper {
     if (config.debugLevel) args.push(`--debug-level=${config.debugLevel}`);
     if (config.makeTool) args.push(`--make-tool=${config.makeTool}`);
 
-    const result = await executeRlCommand('rl-project', args, this.progressReporter);
+    const result = await executeRlCommand('rl-project', args, this.progressReporter, config.cwd);
     if (result.success) {
       this.progressReporter.emit('step', { name: `创建项目 ${config.name}`, progress: 100 });
     }
@@ -173,7 +175,7 @@ export class RlWrapper {
     if (config.username) args.push(`--user=${config.username}`);
     if (config.password) args.push(`--password=${config.password}`);
 
-    const result = await executeRlCommand('rl-device', args, this.progressReporter);
+    const result = await executeRlCommand('rl-device', args, this.progressReporter, config.cwd);
     if (result.success) {
       this.progressReporter.emit('step', { name: `添加设备 ${config.name}`, progress: 100 });
     }
