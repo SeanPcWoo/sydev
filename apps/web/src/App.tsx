@@ -3,6 +3,7 @@ import { Layout } from '@/components/layout/Layout';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { StatusPage } from '@/pages/StatusPage';
 import { TemplatePage } from '@/pages/TemplatePage';
+import { ConfigPage } from '@/pages/ConfigPage';
 
 function PlaceholderPage({ title, description }: { title: string; description: string }) {
   return (
@@ -21,7 +22,7 @@ export function App() {
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<Navigate to="/config" replace />} />
-          <Route path="/config" element={<PlaceholderPage title="配置" description="Workspace、项目和设备配置管理" />} />
+          <Route path="/config" element={<ConfigPage />} />
           <Route path="/status" element={<StatusPage />} />
           <Route path="/templates" element={<TemplatePage />} />
           <Route path="/batch" element={<PlaceholderPage title="批量操作" description="批量创建项目和设备" />} />

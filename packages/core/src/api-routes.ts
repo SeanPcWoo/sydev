@@ -2,7 +2,22 @@ import type { Express, Request, Response, NextFunction } from 'express';
 import { ConfigReader } from './config-reader.js';
 import { TemplateManager } from './template-manager.js';
 import { templateContentSchema } from './schemas/template-schema.js';
+import { workspaceSchema } from './schemas/workspace-schema.js';
+import { projectSchema } from './schemas/project-schema.js';
+import { deviceSchema } from './schemas/device-schema.js';
+import { RlWrapper } from './rl-wrapper.js';
+import { ProgressReporter } from './progress-reporter.js';
 import type { TemplateType } from './template-manager.js';
+import type { ZodError } from 'zod';
+
+function zodFieldErrors(err: ZodError): Record<string, string> {
+  const fields: Record<string, string> = {};
+  for (const issue of err.issues) {
+    const key = String(issue.path[0] ?? '');
+    if (key && !fields[key]) fields[key] = issue.message;
+  }
+  return fields;
+}
 
 export interface ApiRoutesOptions {
   cwd?: string;
@@ -32,13 +47,58 @@ export function registerApiRoutes(app: Express, options: ApiRoutesOptions = {}):
   });
 
   // Workspace
-  app.post('/api/workspace/init', placeholder);
+  app.post('/api/workspace/init', async (req: Request, res: Response) => {
+    const parsed = workspaceSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: '验证失败', fields: zodFieldErrors(parsed.error) });
+      return;
+    }
+    try {
+      const reporter = new ProgressReporter();
+      reporter.on('error', () => {}); // prevent unhandled throw
+      const rl = new RlWrapper(reporter);
+      const result = await rl.initWorkspace(parsed.data);
+      res.json(result);
+    } catch (err) {
+      res.status(500).json({ success: false, error: (err as Error).message });
+    }
+  });
 
   // Project
-  app.post('/api/project/create', placeholder);
+  app.post('/api/project/create', async (req: Request, res: Response) => {
+    const parsed = projectSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: '验证失败', fields: zodFieldErrors(parsed.error) });
+      return;
+    }
+    try {
+      const reporter = new ProgressReporter();
+      reporter.on('error', () => {});
+      const rl = new RlWrapper(reporter);
+      const result = await rl.createProject(parsed.data);
+      res.json(result);
+    } catch (err) {
+      res.status(500).json({ success: false, error: (err as Error).message });
+    }
+  });
 
   // Device
-  app.post('/api/device/add', placeholder);
+  app.post('/api/device/add', async (req: Request, res: Response) => {
+    const parsed = deviceSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: '验证失败', fields: zodFieldErrors(parsed.error) });
+      return;
+    }
+    try {
+      const reporter = new ProgressReporter();
+      reporter.on('error', () => {});
+      const rl = new RlWrapper(reporter);
+      const result = await rl.addDevice(parsed.data);
+      res.json(result);
+    } catch (err) {
+      res.status(500).json({ success: false, error: (err as Error).message });
+    }
+  });
 
   // --- Templates CRUD ---
 
