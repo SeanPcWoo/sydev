@@ -47,6 +47,14 @@
       "type": "full",
       "createdAt": "2026-03-15T12:22:41.468Z",
       "updatedAt": "2026-03-15T12:22:41.468Z"
+    },
+    {
+      "id": "ggg",
+      "name": "ggg",
+      "description": "",
+      "type": "project",
+      "createdAt": "2026-03-15T13:02:34.976Z",
+      "updatedAt": "2026-03-15T13:02:34.976Z"
     }
   ]
 }

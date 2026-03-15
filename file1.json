@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "type": "project",
+  "project": {
+    "name": "eeee",
+    "template": "app",
+    "type": "cmake",
+    "debugLevel": "release",
+    "makeTool": "make"
+  }
+}

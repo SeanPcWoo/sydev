@@ -1,5 +1,6 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
+import inquirer from 'inquirer';
 import { readFileSync } from 'fs';
 import {
   InitOrchestrator,
@@ -29,13 +30,37 @@ export const initCommand = new Command('init')
       return;
     }
 
-    let config: unknown;
+    let config: any;
     try {
       config = JSON.parse(raw);
     } catch {
       console.error(chalk.red('✗ 配置文件不是有效的 JSON'));
       console.log(chalk.cyan('建议: 使用 JSON 校验工具检查文件格式'));
       return;
+    }
+
+    // 如果配置文件没有 workspace，提示用户
+    if (!config.workspace) {
+      console.error(chalk.red('✗ 配置文件缺少 workspace 配置'));
+      console.log(chalk.cyan('建议: 配置文件至少需要包含 workspace 的平台和版本信息'));
+      return;
+    }
+
+    // 交互收集 cwd 和 basePath（配置文件中可以不含）
+    if (!config.workspace.cwd) {
+      const { cwd } = await inquirer.prompt([
+        { type: 'input', name: 'cwd', message: 'Workspace 路径:', default: process.cwd() },
+      ]);
+      config.workspace.cwd = cwd.trim();
+    }
+    if (!config.workspace.basePath) {
+      const { basePath } = await inquirer.prompt([
+        {
+          type: 'input', name: 'basePath', message: 'Base 目录路径:',
+          default: `${config.workspace.cwd}/.realevo/base`,
+        },
+      ]);
+      config.workspace.basePath = basePath.trim();
     }
 
     console.log(chalk.cyan('\n开始全流程初始化...\n'));
