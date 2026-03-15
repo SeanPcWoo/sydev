@@ -58,6 +58,9 @@ export { createWebServer, type WebServerOptions, type WebServerInstance } from '
 export { registerApiRoutes } from './api-routes.js';
 export { WsBridge } from './ws-bridge.js';
 
+// 批量执行
+export { BatchExecutor, type BatchItemStatus, type BatchResult } from './batch-executor.js';
+
 // 常量
 export { PLATFORMS } from './constants.js';
 

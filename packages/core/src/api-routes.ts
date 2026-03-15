@@ -1,4 +1,5 @@
 import type { Express, Request, Response, NextFunction } from 'express';
+import { z } from 'zod';
 import { ConfigReader } from './config-reader.js';
 import { TemplateManager } from './template-manager.js';
 import { templateContentSchema } from './schemas/template-schema.js';
@@ -7,6 +8,8 @@ import { projectSchema } from './schemas/project-schema.js';
 import { deviceSchema } from './schemas/device-schema.js';
 import { RlWrapper } from './rl-wrapper.js';
 import { ProgressReporter } from './progress-reporter.js';
+import { BatchExecutor } from './batch-executor.js';
+import type { WsBridge } from './ws-bridge.js';
 import type { TemplateType } from './template-manager.js';
 import type { ZodError } from 'zod';
 
@@ -21,6 +24,7 @@ function zodFieldErrors(err: ZodError): Record<string, string> {
 
 export interface ApiRoutesOptions {
   cwd?: string;
+  wsBridge?: WsBridge;
 }
 
 export function registerApiRoutes(app: Express, options: ApiRoutesOptions = {}): void {
@@ -217,16 +221,79 @@ export function registerApiRoutes(app: Express, options: ApiRoutesOptions = {}):
     }
   });
 
-  // Batch
-  app.post('/api/batch/execute', placeholder);
+  // --- Batch ---
+
+  const batchExecuteSchema = z.object({
+    cwd: z.string().min(1, '工作路径不能为空'),
+    projects: z.array(projectSchema).default([]),
+    devices: z.array(deviceSchema).default([]),
+  });
+
+  const batchRetrySchema = z.object({
+    cwd: z.string().min(1, '工作路径不能为空'),
+    items: z.array(z.object({
+      type: z.enum(['project', 'device']),
+      config: z.unknown(),
+    })),
+  });
+
+  app.post('/api/batch/execute', async (req: Request, res: Response) => {
+    const parsed = batchExecuteSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: '验证失败', fields: zodFieldErrors(parsed.error) });
+      return;
+    }
+    const { cwd: batchCwd, projects, devices } = parsed.data;
+    if (projects.length === 0 && devices.length === 0) {
+      res.status(400).json({ error: '至少需要一个项目或设备' });
+      return;
+    }
+    try {
+      const reporter = new ProgressReporter();
+      reporter.on('error', () => {}); // prevent unhandled throw
+      if (options.wsBridge) {
+        options.wsBridge.attachReporter(reporter);
+      }
+      const rl = new RlWrapper(reporter);
+      const executor = new BatchExecutor(rl, reporter);
+      const result = await executor.execute(batchCwd, projects, devices);
+      if (options.wsBridge) {
+        options.wsBridge.detachReporter();
+      }
+      res.json(result);
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  app.post('/api/batch/retry', async (req: Request, res: Response) => {
+    const parsed = batchRetrySchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: '验证失败', fields: zodFieldErrors(parsed.error) });
+      return;
+    }
+    const { cwd: retryCwd, items } = parsed.data;
+    try {
+      const reporter = new ProgressReporter();
+      reporter.on('error', () => {});
+      if (options.wsBridge) {
+        options.wsBridge.attachReporter(reporter);
+      }
+      const rl = new RlWrapper(reporter);
+      const executor = new BatchExecutor(rl, reporter);
+      const result = await executor.retryFailed(retryCwd, items as Parameters<BatchExecutor['retryFailed']>[1]);
+      if (options.wsBridge) {
+        options.wsBridge.detachReporter();
+      }
+      res.json(result);
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
 
   // Global error handler
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     console.error('[api]', err.message);
     res.status(500).json({ error: err.message });
   });
-}
-
-function placeholder(_req: Request, res: Response): void {
-  res.status(501).json({ error: 'Not implemented' });
 }
