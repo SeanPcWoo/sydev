@@ -20,7 +20,10 @@ export {
 export {
   RlWrapper,
   executeRlCommand,
-  type RlCommandResult
+  type RlCommandResult,
+  type WorkspaceInitOptions,
+  type ProjectCreateOptions,
+  type DeviceAddOptions
 } from './rl-wrapper.js';
 
 // 进度报告
@@ -29,6 +32,9 @@ export {
   type StepProgress,
   type ErrorEvent
 } from './progress-reporter.js';
+
+// 常量
+export { PLATFORMS } from './constants.js';
 
 // 类型定义
 export type {
