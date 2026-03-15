@@ -1,9 +1,9 @@
 ---
-status: resolved
+status: complete
 phase: 01-cli-core
-source: 01-01-SUMMARY.md, 01-02-SUMMARY.md, 01-03-SUMMARY.md, 01-04-SUMMARY.md, 01-05-SUMMARY.md
+source: 01-01-SUMMARY.md, 01-02-SUMMARY.md, 01-03-SUMMARY.md, 01-04-SUMMARY.md, 01-05-SUMMARY.md, 01-06-SUMMARY.md
 started: 2026-03-14T08:15:00Z
-updated: 2026-03-14T17:00:00Z
+updated: 2026-03-15T09:22:00Z
 ---
 
 ## Current Test
@@ -32,23 +32,23 @@ result: pass
 
 ### 5. 交互式向导 - Workspace 初始化流程
 expected: 运行 `pnpm dev:cli workspace init` 启动交互式向导，依次提示输入 Base 版本、平台、构建选项。输入错误格式时立即显示验证错误（如版本号格式不正确）。完成输入后显示配置摘要并要求确认。
-result: skipped
-reason: 被 Test 1 的环境检查问题阻塞，无法进入交互式向导
+result: pass
 
 ### 6. 交互式向导 - Project 创建流程
 expected: 运行 `pnpm dev:cli project create` 启动交互式向导，提示输入项目名称（验证 3-50 字符）、选择项目类型（app/lib/driver）、可选模板名称、项目路径。输入验证即时反馈，完成后显示配置摘要。
-result: skipped
-reason: 被 Test 1 的环境检查问题阻塞
+result: issue
+reported: "整个逻辑不对，首先还是要用户选择创建好的 workspace 的路径，默认情况，应该就是执行命令的所在目录。然后创建工程时，先是询问是导入已有git 工程，还是新建工程，如果是导入已有工程，那么直接让用户写 git 仓库地址和分支，并且工程的默认名称就是git 的文件名称。另外没有项目版本号的概念"
+severity: blocker
 
 ### 7. 交互式向导 - Device 配置流程
 expected: 运行 `pnpm dev:cli device add` 启动交互式向导，提示输入设备名称、IP 地址（验证 IPv4 格式）、SSH 端口（验证 1-65535）、用户名、密码（mask 显示）。完成后保存到 .sydev/devices.json 文件。
-result: skipped
-reason: 被 Test 1 的环境检查问题阻塞
+result: issue
+reported: "同样要先让用户指定 workspace 路径，然后平台也是在 workspace init 一样，要让用户选择"
+severity: blocker
 
 ### 8. 进度反馈 - 实时进度显示
 expected: 在交互式向导执行操作时（如 workspace init），显示 ora spinner 进度指示器，显示当前步骤名称和进度百分比，操作成功时显示绿色成功提示。
-result: skipped
-reason: 被 Test 1 的环境检查问题阻塞，无法执行操作
+result: pass
 
 ### 9. Shell 补全 - bash 补全脚本生成
 expected: 运行 `pnpm dev:cli completion bash` 输出 bash 补全脚本到 stdout，脚本包含所有命令和子命令（workspace init/status, project create/list, device add/list, completion bash/zsh/install）。
@@ -65,10 +65,10 @@ result: pass
 ## Summary
 
 total: 11
-passed: 6
-issues: 1
+passed: 8
+issues: 3
 pending: 0
-skipped: 4
+skipped: 0
 
 ## Gaps
 
@@ -84,3 +84,23 @@ skipped: 4
   resolution: "Plan 01-06 修复了所有问题：命令检测改为 rl-workspace，所有错误消息中文化，修复建议包含具体命令示例和路径示例"
   resolved_by: "01-06"
   debug_session: ".planning/debug/env-check-wrong-command.md"
+
+- truth: "Project 创建向导应该先选择 workspace 路径（默认当前目录），然后询问是导入已有 git 工程还是新建工程，导入时提供 git 仓库地址和分支，工程名称默认为 git 仓库名"
+  status: failed
+  reason: "User reported: 整个逻辑不对，首先还是要用户选择创建好的 workspace 的路径，默认情况，应该就是执行命令的所在目录。然后创建工程时，先是询问是导入已有git 工程，还是新建工程，如果是导入已有工程，那么直接让用户写 git 仓库地址和分支，并且工程的默认名称就是git 的文件名称。另外没有项目版本号的概念"
+  severity: blocker
+  test: 6
+  root_cause: ""
+  artifacts: []
+  missing: []
+  debug_session: ""
+
+- truth: "Device 配置向导应该先让用户指定 workspace 路径，然后让用户选择平台（与 workspace init 相同的平台选择流程）"
+  status: failed
+  reason: "User reported: 同样要先让用户指定 workspace 路径，然后平台也是在 workspace init 一样，要让用户选择"
+  severity: blocker
+  test: 7
+  root_cause: ""
+  artifacts: []
+  missing: []
+  debug_session: ""
