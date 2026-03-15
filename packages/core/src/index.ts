@@ -47,6 +47,9 @@ export {
   type ErrorEvent
 } from './progress-reporter.js';
 
+// 初始化编排
+export { InitOrchestrator, type InitResult } from './init-orchestrator.js';
+
 // 常量
 export { PLATFORMS } from './constants.js';
 
