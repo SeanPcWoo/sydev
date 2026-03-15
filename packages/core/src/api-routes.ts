@@ -1,8 +1,17 @@
 import type { Express, Request, Response, NextFunction } from 'express';
 import { ConfigReader } from './config-reader.js';
+import { TemplateManager } from './template-manager.js';
+import { templateContentSchema } from './schemas/template-schema.js';
+import type { TemplateType } from './template-manager.js';
 
-export function registerApiRoutes(app: Express): void {
+export interface ApiRoutesOptions {
+  cwd?: string;
+}
+
+export function registerApiRoutes(app: Express, options: ApiRoutesOptions = {}): void {
+  const cwd = options.cwd || process.cwd();
   const configReader = new ConfigReader();
+  const templateManager = new TemplateManager(cwd);
 
   // Health check
   app.get('/api/health', (_req: Request, res: Response) => {
@@ -31,16 +40,122 @@ export function registerApiRoutes(app: Express): void {
   // Device
   app.post('/api/device/add', placeholder);
 
-  // Templates CRUD
-  app.get('/api/templates', placeholder);
-  app.post('/api/templates', placeholder);
-  app.get('/api/templates/:id', placeholder);
-  app.put('/api/templates/:id', placeholder);
-  app.delete('/api/templates/:id', placeholder);
+  // --- Templates CRUD ---
 
-  // Template import/export
-  app.post('/api/templates/import', placeholder);
-  app.get('/api/templates/:id/export', placeholder);
+  // List templates (optional ?type= filter)
+  app.get('/api/templates', (req: Request, res: Response) => {
+    try {
+      const type = req.query.type as TemplateType | undefined;
+      const validTypes = ['workspace', 'project', 'device', 'full'];
+      if (type && !validTypes.includes(type)) {
+        res.status(400).json({ error: `无效的模板类型: ${type}` });
+        return;
+      }
+      const templates = templateManager.list(type);
+      res.json(templates);
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  // Create template
+  app.post('/api/templates', (req: Request, res: Response) => {
+    try {
+      const { name, description, type, data } = req.body;
+      if (!name || !type) {
+        res.status(400).json({ error: '缺少必填字段: name, type' });
+        return;
+      }
+      const meta = templateManager.save(name, description || '', type, data);
+      res.status(201).json(meta);
+    } catch (err) {
+      const msg = (err as Error).message;
+      const status = msg.includes('无效') ? 400 : 500;
+      res.status(status).json({ error: msg });
+    }
+  });
+
+  // Import template (must be before :id routes)
+  app.post('/api/templates/import', (req: Request, res: Response) => {
+    try {
+      const { name, description, type, data } = req.body;
+      if (!name || !type || data === undefined) {
+        res.status(400).json({ error: '缺少必填字段: name, type, data' });
+        return;
+      }
+      // Validate content against schema
+      templateContentSchema.parse({ type, data });
+      const meta = templateManager.save(name, description || '', type, data);
+      res.status(201).json(meta);
+    } catch (err) {
+      const msg = (err as Error).message;
+      res.status(400).json({ error: msg });
+    }
+  });
+
+  // Get template by ID
+  app.get('/api/templates/:id', (req: Request, res: Response) => {
+    try {
+      const id = req.params.id as string;
+      const result = templateManager.load(id);
+      res.json(result);
+    } catch (err) {
+      const msg = (err as Error).message;
+      const status = msg.includes('不存在') || msg.includes('丢失') ? 404 : 500;
+      res.status(status).json({ error: msg });
+    }
+  });
+
+  // Update template
+  app.put('/api/templates/:id', (req: Request, res: Response) => {
+    try {
+      const id = req.params.id as string;
+      if (!templateManager.exists(id)) {
+        res.status(404).json({ error: '模板不存在' });
+        return;
+      }
+      const { name, description, type, data } = req.body;
+      if (!name || !type) {
+        res.status(400).json({ error: '缺少必填字段: name, type' });
+        return;
+      }
+      const meta = templateManager.save(name, description || '', type, data);
+      res.json(meta);
+    } catch (err) {
+      const msg = (err as Error).message;
+      res.status(500).json({ error: msg });
+    }
+  });
+
+  // Delete template
+  app.delete('/api/templates/:id', (req: Request, res: Response) => {
+    try {
+      const id = req.params.id as string;
+      if (!templateManager.exists(id)) {
+        res.status(404).json({ error: '模板不存在' });
+        return;
+      }
+      templateManager.delete(id);
+      res.status(204).send();
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  // Export template (download JSON)
+  app.get('/api/templates/:id/export', (req: Request, res: Response) => {
+    try {
+      const id = req.params.id as string;
+      const result = templateManager.load(id);
+      res.setHeader('Content-Disposition', `attachment; filename="${id}.json"`);
+      res.setHeader('Content-Type', 'application/json');
+      res.json(result);
+    } catch (err) {
+      const msg = (err as Error).message;
+      const status = msg.includes('不存在') || msg.includes('丢失') ? 404 : 500;
+      res.status(status).json({ error: msg });
+    }
+  });
 
   // Batch
   app.post('/api/batch/execute', placeholder);
