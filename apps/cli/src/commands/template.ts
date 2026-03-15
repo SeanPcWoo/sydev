@@ -322,8 +322,6 @@ templateCommand
       }
     }
   });
-    }
-  });
 // --- Content collection helpers ---
 
 async function collectWorkspace() {

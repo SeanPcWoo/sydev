@@ -34,7 +34,8 @@
       "Bash(git:*)",
       "Bash(for plan:*)",
       "Read(//home/sean/project/**)",
-      "Bash(mv openswitch:*)"
+      "Bash(mv openswitch:*)",
+      "Bash(npx vitest:*)"
     ]
   }
 }
