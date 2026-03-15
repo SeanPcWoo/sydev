@@ -8,7 +8,7 @@
 
 - [x] **Phase 1: CLI 核心功能** - 可工作的 CLI 工具，支持基本初始化、环境检查、交互式向导 (completed 2026-03-14)
 - [x] **Phase 2: 模板与配置系统** - 模板系统、配置导入导出、单命令快速初始化 (completed 2026-03-15)
-- [ ] **Phase 3: Web UI 与批量操作** - Web 可视化界面、批量操作、性能优化
+- [x] **Phase 3: Web UI 与批量操作** - Web 可视化界面、批量操作、性能优化 (completed 2026-03-15)
 
 ## Phase Details
 
@@ -79,7 +79,7 @@ Plans:
 4. 用户可以从 Web 界面导出 CLI 配置文件和复制 CLI 命令
 5. 用户可以通过配置文件一次性创建多个项目或配置多个设备，并看到每个操作的独立进度反馈
 
-**Plans:** 5 plans
+**Plans:** 5/5 plans complete
 
 Plans:
 - [x] 03-01-PLAN.md — Web 基础架构（后端服务器 + 前端脚手架 + sydev web 命令）
@@ -96,7 +96,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. CLI 核心功能 | 8/9 | In progress | - |
 | 2. 模板与配置系统 | 3/3 | Complete   | 2026-03-15 |
-| 3. Web UI 与批量操作 | 1/5 | In progress | - |
+| 3. Web UI 与批量操作 | 5/5 | Complete   | 2026-03-15 |
 
 ---
 *Last updated: 2026-03-15*

@@ -73,14 +73,14 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### WEB-EXPORT (Web 导出功能)
 
-- [ ] **WEB-EXPORT-01**: 用户可以从 Web 界面导出 CLI 配置文件
-- [ ] **WEB-EXPORT-02**: 用户可以从 Web 界面复制 CLI 命令
+- [x] **WEB-EXPORT-01**: 用户可以从 Web 界面导出 CLI 配置文件
+- [x] **WEB-EXPORT-02**: 用户可以从 Web 界面复制 CLI 命令
 
 ### BATCH (批量操作)
 
-- [ ] **BATCH-01**: 用户可以通过配置文件一次性创建多个项目
-- [ ] **BATCH-02**: 用户可以通过配置文件一次性配置多个设备
-- [ ] **BATCH-03**: 用户在批量操作时看到每个操作的独立进度反馈
+- [x] **BATCH-01**: 用户可以通过配置文件一次性创建多个项目
+- [x] **BATCH-02**: 用户可以通过配置文件一次性配置多个设备
+- [x] **BATCH-03**: 用户在批量操作时看到每个操作的独立进度反馈
 
 ## v2 Requirements
 
@@ -154,11 +154,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | WEB-TEMPLATE-03 | Phase 3 | Complete |
 | WEB-TEMPLATE-04 | Phase 3 | Complete |
 | WEB-TEMPLATE-05 | Phase 3 | Complete |
-| WEB-EXPORT-01 | Phase 3 | Pending |
-| WEB-EXPORT-02 | Phase 3 | Pending |
-| BATCH-01 | Phase 3 | Pending |
-| BATCH-02 | Phase 3 | Pending |
-| BATCH-03 | Phase 3 | Pending |
+| WEB-EXPORT-01 | Phase 3 | Complete |
+| WEB-EXPORT-02 | Phase 3 | Complete |
+| BATCH-01 | Phase 3 | Complete |
+| BATCH-02 | Phase 3 | Complete |
+| BATCH-03 | Phase 3 | Complete |
 
 **Coverage:**
 - v1 requirements: 33 total
