@@ -13,8 +13,22 @@ export {
   deviceSchema,
   type WorkspaceConfig,
   type ProjectConfig,
-  type DeviceConfig
+  type DeviceConfig,
+  templateTypeSchema,
+  templateMetaSchema,
+  templateIndexSchema,
+  templateContentSchema,
+  fullConfigSchema,
+  type FullConfig,
 } from './schemas/index.js';
+
+// 模板管理
+export {
+  TemplateManager,
+  type TemplateMeta,
+  type TemplateType,
+  type TemplateIndex,
+} from './template-manager.js';
 
 // rl 命令包装
 export {
