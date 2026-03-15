@@ -1,17 +1,30 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
-import { writeFileSync, existsSync, readFileSync, mkdirSync } from 'fs';
-import { join } from 'path';
 import {
   ConfigManager,
   deviceSchema,
+  RlWrapper,
+  PLATFORMS,
   type DeviceConfig
 } from '@sydev/core';
+import { createCliProgressReporter } from '../utils/cli-progress.js';
 
 export async function runDeviceWizard(): Promise<void> {
   console.log(chalk.bold.cyan('\n🔌 设备配置向导\n'));
 
   const answers = await inquirer.prompt([
+    {
+      type: 'input',
+      name: 'cwd',
+      message: 'Workspace 路径:',
+      default: process.cwd(),
+      validate: (input: string) => {
+        if (!input || input.trim().length === 0) {
+          return '工作路径不能为空';
+        }
+        return true;
+      }
+    },
     {
       type: 'input',
       name: 'name',
@@ -40,10 +53,56 @@ export async function runDeviceWizard(): Promise<void> {
       }
     },
     {
+      type: 'list',
+      name: 'platform',
+      message: '设备平台:',
+      choices: PLATFORMS,
+      default: 'ARM64_GENERIC'
+    },
+    {
       type: 'input',
-      name: 'port',
-      message: '端口:',
+      name: 'ssh',
+      message: 'SSH 端口:',
       default: '22',
+      validate: (input: string) => {
+        const port = parseInt(input);
+        if (isNaN(port) || port < 1 || port > 65535) {
+          return '端口必须在 1-65535 之间';
+        }
+        return true;
+      }
+    },
+    {
+      type: 'input',
+      name: 'telnet',
+      message: 'Telnet 端口:',
+      default: '23',
+      validate: (input: string) => {
+        const port = parseInt(input);
+        if (isNaN(port) || port < 1 || port > 65535) {
+          return '端口必须在 1-65535 之间';
+        }
+        return true;
+      }
+    },
+    {
+      type: 'input',
+      name: 'ftp',
+      message: 'FTP 端口:',
+      default: '21',
+      validate: (input: string) => {
+        const port = parseInt(input);
+        if (isNaN(port) || port < 1 || port > 65535) {
+          return '端口必须在 1-65535 之间';
+        }
+        return true;
+      }
+    },
+    {
+      type: 'input',
+      name: 'gdb',
+      message: 'GDB 端口:',
+      default: '1234',
       validate: (input: string) => {
         const port = parseInt(input);
         if (isNaN(port) || port < 1 || port > 65535) {
@@ -75,7 +134,11 @@ export async function runDeviceWizard(): Promise<void> {
   const config: DeviceConfig = {
     name: answers.name.trim(),
     ip: answers.ip.trim(),
-    port: parseInt(answers.port),
+    platform: answers.platform.trim(),
+    ssh: parseInt(answers.ssh),
+    telnet: parseInt(answers.telnet),
+    ftp: parseInt(answers.ftp),
+    gdb: parseInt(answers.gdb),
     username: answers.username.trim(),
     password: answers.password || undefined
   };
@@ -88,9 +151,14 @@ export async function runDeviceWizard(): Promise<void> {
   }
 
   console.log(chalk.bold('\n📋 配置摘要:'));
+  console.log(chalk.dim(`  Workspace: ${answers.cwd}`));
   console.log(chalk.dim(`  名称: ${config.name}`));
   console.log(chalk.dim(`  IP: ${config.ip}`));
-  console.log(chalk.dim(`  端口: ${config.port}`));
+  console.log(chalk.dim(`  平台: ${config.platform}`));
+  console.log(chalk.dim(`  SSH: ${config.ssh}`));
+  console.log(chalk.dim(`  Telnet: ${config.telnet}`));
+  console.log(chalk.dim(`  FTP: ${config.ftp}`));
+  console.log(chalk.dim(`  GDB: ${config.gdb}`));
   console.log(chalk.dim(`  用户名: ${config.username}`));
 
   const { confirm } = await inquirer.prompt([
@@ -107,23 +175,30 @@ export async function runDeviceWizard(): Promise<void> {
     return;
   }
 
-  // 保存设备配置到 .sydev/devices.json
-  const configDir = join(process.cwd(), '.sydev');
-  const devicesFile = join(configDir, 'devices.json');
+  console.log(chalk.cyan('\n正在添加设备...\n'));
 
-  let devices: DeviceConfig[] = [];
-  if (existsSync(devicesFile)) {
-    devices = JSON.parse(readFileSync(devicesFile, 'utf-8'));
+  const progressReporter = createCliProgressReporter();
+  const rlWrapper = new RlWrapper(progressReporter);
+
+  const result = await rlWrapper.addDevice({
+    name: config.name,
+    ip: config.ip,
+    platform: config.platform,
+    ssh: config.ssh,
+    telnet: config.telnet,
+    ftp: config.ftp,
+    gdb: config.gdb,
+    username: config.username,
+    password: config.password
+  });
+
+  if (result.success) {
+    console.log(chalk.bold.green('\n✓ 设备添加成功!\n'));
+  } else {
+    console.error(chalk.red(`\n✗ 添加失败: ${result.error}\n`));
+    if (result.fixSuggestion) {
+      console.error(chalk.cyan(`建议: ${result.fixSuggestion}\n`));
+    }
+    process.exit(1);
   }
-
-  devices.push(config);
-
-  if (!existsSync(configDir)) {
-    mkdirSync(configDir, { recursive: true });
-  }
-
-  writeFileSync(devicesFile, JSON.stringify(devices, null, 2));
-
-  console.log(chalk.bold.green('\n✓ 设备添加成功!\n'));
-  console.log(chalk.dim(`配置已保存到 ${devicesFile}\n`));
 }
