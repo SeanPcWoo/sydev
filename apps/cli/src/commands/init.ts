@@ -41,6 +41,11 @@ export const initCommand = new Command('init')
       return;
     }
 
+    // 支持模板文件格式: { type: "full", data: {...} }
+    if (config.type === 'full' && config.data) {
+      config = config.data;
+    }
+
     if (!config.workspace) {
       console.error(chalk.red('✗ 配置文件缺少 workspace 配置'));
       console.log(chalk.cyan('建议: 配置文件至少需要包含 workspace 的平台和版本信息'));
