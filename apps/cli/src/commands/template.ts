@@ -2,6 +2,8 @@ import { Command } from 'commander';
 import inquirer from 'inquirer';
 import chalk from 'chalk';
 import { readFileSync, writeFileSync } from 'fs';
+import { homedir } from 'os';
+import { join } from 'path';
 import { getRemoteDefaultBranch, remoteBranchExists } from '../utils/git.js';
 
 /** Calculate terminal display width (CJK chars = 2 columns) */
@@ -39,6 +41,11 @@ const TEMPLATE_TYPES: { name: string; value: TemplateType }[] = [
   { name: 'full - 全流程模板', value: 'full' },
 ];
 
+/** Get global template directory */
+function getGlobalTemplateDir(): string {
+  return join(homedir(), '.sydev');
+}
+
 export const templateCommand = new Command('template')
   .description('管理配置模板')
   .addHelpText('after', `
@@ -56,7 +63,7 @@ templateCommand
   .command('save')
   .description('保存当前配置为模板')
   .action(async () => {
-    const tm = new TemplateManager(process.cwd());
+    const tm = new TemplateManager(getGlobalTemplateDir());
 
     const base = await inquirer.prompt([
       { type: 'input', name: 'name', message: '模板名称:', validate: (v: string) => v.trim() ? true : '名称不能为空' },
@@ -98,7 +105,7 @@ templateCommand
   .description('查看所有模板')
   .option('-t, --type <type>', '按类型过滤 (workspace/project/device/full)')
   .action(async (opts) => {
-    const tm = new TemplateManager(process.cwd());
+    const tm = new TemplateManager(getGlobalTemplateDir());
     const templates = tm.list(opts.type);
 
     if (templates.length === 0) {
@@ -122,7 +129,7 @@ templateCommand
   .command('apply <id>')
   .description('从模板初始化环境')
   .action(async (id: string) => {
-    const tm = new TemplateManager(process.cwd());
+    const tm = new TemplateManager(getGlobalTemplateDir());
 
     let loaded;
     try {
@@ -236,7 +243,7 @@ templateCommand
   .command('delete <id>')
   .description('删除模板')
   .action(async (id: string) => {
-    const tm = new TemplateManager(process.cwd());
+    const tm = new TemplateManager(getGlobalTemplateDir());
 
     if (!tm.exists(id)) {
       console.error(chalk.red(`✗ 模板 "${id}" 不存在`));
@@ -312,6 +319,14 @@ templateCommand
         console.error(chalk.red(`✗ 文件中缺少 ${detectedType} 字段`));
         return;
       }
+    } else if (parsed.type === 'full') {
+      detectedType = 'full';
+      // 支持 { type: "full", data: {...} } 或 { type: "full", full: {...} } 格式
+      templateData = parsed.data || parsed.full;
+      if (!templateData) {
+        console.error(chalk.red('✗ 文件中缺少 data 或 full 字段'));
+        return;
+      }
     } else if (parsed.workspace) {
       detectedType = 'full';
       templateData = parsed;
@@ -332,7 +347,7 @@ templateCommand
         { type: 'input', name: 'description', message: '模板描述:', default: '' },
       ]);
 
-      const tm = new TemplateManager(process.cwd());
+      const tm = new TemplateManager(getGlobalTemplateDir());
       try {
         const meta = tm.save(name, description, detectedType, templateData);
         console.log(chalk.green(`✓ 已保存为模板: ${meta.id} (${meta.type})`));
