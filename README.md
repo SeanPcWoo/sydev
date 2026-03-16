@@ -10,7 +10,7 @@ npm install -g @haawpc/sydev
 
 - Node.js >= 18.0.0
 - RealEvo-Stream 已安装并配置（`rl` 命令可用）
-- 部分命令（`template`、`init`、`web`、`completion`）无需 RealEvo-Stream 环境
+- 部分命令（`template`、`init`）无需 RealEvo-Stream 环境
 
 ## 命令概览
 
@@ -21,8 +21,6 @@ npm install -g @haawpc/sydev
 | `sydev device` | 管理目标设备 |
 | `sydev template` | 管理配置模板 |
 | `sydev init` | 从配置文件全流程初始化 |
-| `sydev web` | 启动 Web 可视化界面 |
-| `sydev completion` | 生成 Shell 自动补全脚本 |
 
 ---
 
@@ -222,59 +220,6 @@ sydev init --config my-env.json
 
 ---
 
-## sydev web
-
-启动 Web 可视化管理界面，提供配置管理、状态监控、模板管理和批量操作功能。
-
-```bash
-sydev web
-sydev web -p 8080
-sydev web --no-open
-```
-
-| 选项 | 说明 |
-|------|------|
-| `-p, --port <port>` | 端口号（默认 `3456`） |
-| `--no-open` | 不自动打开浏览器 |
-
-Web 界面功能：
-- 配置表单：可视化编辑 workspace / project / device 配置
-- 状态面板：查看当前环境状态
-- 模板管理：创建、编辑、导入导出模板
-- 批量操作：批量初始化环境，实时进度展示
-
----
-
-## sydev completion
-
-生成 Shell 自动补全脚本，支持 Bash 和 Zsh。
-
-### completion install
-
-自动检测当前 Shell 并安装补全脚本。
-
-```bash
-sydev completion install
-```
-
-### completion bash
-
-输出 Bash 补全脚本（手动安装）。
-
-```bash
-sydev completion bash >> ~/.bashrc
-```
-
-### completion zsh
-
-输出 Zsh 补全脚本（手动安装）。
-
-```bash
-sydev completion zsh > ~/.zsh/completion/_sydev
-```
-
----
-
 ## 快速上手
 
 ### 1. 交互式创建环境
@@ -308,12 +253,6 @@ sydev template export -o env.json
 
 # 在其他机器上一键初始化
 sydev init --config env.json
-```
-
-### 4. Web 界面管理
-
-```bash
-sydev web
 ```
 
 ---
