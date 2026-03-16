@@ -14,7 +14,8 @@ export async function executeRlCommand(
   command: string,
   args: string[],
   progressReporter?: ProgressReporter,
-  cwd?: string
+  cwd?: string,
+  timeoutMs = 120_000,
 ): Promise<RlCommandResult> {
   return new Promise((resolve) => {
     // 确保 cwd 目录存在
@@ -25,6 +26,21 @@ export async function executeRlCommand(
     const proc = spawn(command, args, { cwd, env: process.env, shell: true });
     let stdout = '';
     let stderr = '';
+    let settled = false;
+
+    const timer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        proc.kill('SIGTERM');
+        resolve({
+          success: false,
+          stdout,
+          stderr,
+          error: `执行 ${command} 超时 (${timeoutMs / 1000}s)`,
+          fixSuggestion: '命令执行时间过长，请检查网络或手动执行该命令排查问题',
+        });
+      }
+    }, timeoutMs);
 
     proc.stdout?.on('data', (data) => {
       stdout += data.toString();
@@ -36,6 +52,9 @@ export async function executeRlCommand(
     });
 
     proc.on('close', (code) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
       if (code === 0) {
         resolve({ success: true, stdout });
       } else {
@@ -45,6 +64,9 @@ export async function executeRlCommand(
     });
 
     proc.on('error', (err) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
       resolve({
         success: false,
         error: `执行 ${command} 命令失败: ${err.message}`,
@@ -134,6 +156,8 @@ export class RlWrapper {
     const result = await executeRlCommand('rl-workspace', args, this.progressReporter, config.cwd);
     if (result.success) {
       this.progressReporter.emit('step', { name: '初始化 Workspace', progress: 100 });
+    } else {
+      this.progressReporter.reportError(result.error ?? 'workspace 初始化失败');
     }
     return result;
   }
@@ -160,6 +184,8 @@ export class RlWrapper {
     const result = await executeRlCommand('rl-project', args, this.progressReporter, config.cwd);
     if (result.success) {
       this.progressReporter.emit('step', { name: `创建项目 ${config.name}`, progress: 100 });
+    } else {
+      this.progressReporter.reportError(result.error ?? `项目 ${config.name} 创建失败`);
     }
     return result;
   }
@@ -183,6 +209,8 @@ export class RlWrapper {
     const result = await executeRlCommand('rl-device', args, this.progressReporter, config.cwd);
     if (result.success) {
       this.progressReporter.emit('step', { name: `添加设备 ${config.name}`, progress: 100 });
+    } else {
+      this.progressReporter.reportError(result.error ?? `设备 ${config.name} 添加失败`);
     }
     return result;
   }

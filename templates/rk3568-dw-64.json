@@ -4,7 +4,7 @@
     "schemaVersion": 1,
     "workspace": {
       "platform": "ARM64_GENERIC",
-      "version": "ecs_3.6.5",
+      "version": "lts_3.6.5",
       "createbase": true,
       "build": false,
       "debugLevel": "release",
@@ -12,8 +12,20 @@
     },
     "projects": [
       {
+        "name": "libdrv_net_compat",
+        "source": "ssh://git@10.7.100.21:16783/driver_library/libdrv_net_compat.git",
+        "branch": "main",
+        "makeTool": "make"
+      },
+      {
         "name": "libdrv_linux_compat",
         "source": "ssh://git@10.7.100.21:16783/driver_library/libdrv_linux_compat.git",
+        "branch": "master",
+        "makeTool": "make"
+      },
+      {
+        "name": "libdrv_dwmac",
+        "source": "ssh://git@10.7.100.21:16783/pci/libdrv_dwmac.git",
         "branch": "master",
         "makeTool": "make"
       }

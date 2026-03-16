@@ -11,6 +11,9 @@ import {
   type WorkspaceConfig
 } from '@sydev/core';
 import { createCliProgressReporter } from '../utils/cli-progress.js';
+import { getRemoteDefaultBranch } from '../utils/git.js';
+
+const RESEARCH_REPO = 'ssh://git@10.7.100.21:16783/sylixos/research/libsylixos.git';
 
 export async function runWorkspaceWizard(): Promise<void> {
   console.log(chalk.bold.cyan('\n🚀 Workspace 初始化向导\n'));
@@ -47,7 +50,7 @@ export async function runWorkspaceWizard(): Promise<void> {
       type: 'input',
       name: 'researchBranch',
       message: 'research 仓库分支:',
-      default: 'master',
+      default: () => getRemoteDefaultBranch(RESEARCH_REPO),
       when: (answers: any) => answers.version === 'research'
     },
     {
@@ -66,7 +69,7 @@ export async function runWorkspaceWizard(): Promise<void> {
       type: 'input',
       name: 'customBranch',
       message: '仓库分支:',
-      default: 'master',
+      default: (answers: any) => getRemoteDefaultBranch(answers.customRepo?.trim() || ''),
       when: (answers: any) => answers.version === 'custom'
     },
     {
@@ -129,7 +132,7 @@ export async function runWorkspaceWizard(): Promise<void> {
   const isCloneMode = isResearch || isCustom;
   const cloneBranch = isResearch ? (answers.researchBranch || 'master') : (answers.customBranch || 'master');
   const cloneRepo = isResearch
-    ? 'ssh://git@10.7.100.21:16783/sylixos/research/libsylixos.git'
+    ? RESEARCH_REPO
     : answers.customRepo?.trim();
 
   const config: WorkspaceConfig = {

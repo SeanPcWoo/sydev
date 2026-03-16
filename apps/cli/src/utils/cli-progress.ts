@@ -8,7 +8,11 @@ export function createCliProgressReporter(): ProgressReporter {
 
   reporter.on('step', ({ name, progress }) => {
     if (progress === 0) {
-      // 开始新步骤
+      // 开始新步骤 — 先停掉上一个 spinner（如果有）
+      if (spinner) {
+        spinner.stop();
+        spinner = null;
+      }
       spinner = ora({
         text: name,
         color: 'cyan'

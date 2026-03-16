@@ -53,11 +53,6 @@ export { InitOrchestrator, type InitResult, type InitOptions, type StepError } f
 // 状态读取
 export { ConfigReader, type WorkspaceStatus } from './config-reader.js';
 
-// Web 服务器
-export { createWebServer, type WebServerOptions, type WebServerInstance } from './web-server.js';
-export { registerApiRoutes } from './api-routes.js';
-export { WsBridge } from './ws-bridge.js';
-
 // 批量执行
 export { BatchExecutor, type BatchItemStatus, type BatchResult } from './batch-executor.js';
 

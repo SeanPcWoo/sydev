@@ -2,6 +2,25 @@ import { Command } from 'commander';
 import inquirer from 'inquirer';
 import chalk from 'chalk';
 import { readFileSync, writeFileSync } from 'fs';
+import { getRemoteDefaultBranch, remoteBranchExists } from '../utils/git.js';
+
+/** Calculate terminal display width (CJK chars = 2 columns) */
+function strWidth(s: string): number {
+  let w = 0;
+  for (const ch of s) {
+    const code = ch.codePointAt(0)!;
+    // CJK Unified Ideographs + common fullwidth ranges
+    w += (code >= 0x2E80 && code <= 0x9FFF) || (code >= 0xF900 && code <= 0xFAFF) || (code >= 0xFE30 && code <= 0xFE4F) || (code >= 0xFF00 && code <= 0xFF60) || (code >= 0x20000 && code <= 0x2FA1F) ? 2 : 1;
+  }
+  return w;
+}
+
+/** padEnd that respects CJK display width */
+function padEndW(s: string, width: number): string {
+  const diff = width - strWidth(s);
+  return diff > 0 ? s + ' '.repeat(diff) : s;
+}
+
 import {
   TemplateManager,
   ConfigManager,
@@ -89,12 +108,12 @@ templateCommand
 
     console.log(chalk.bold(`\n共 ${templates.length} 个模板:\n`));
     console.log(
-      chalk.dim('  ' + 'ID'.padEnd(24) + '名称'.padEnd(16) + '类型'.padEnd(12) + '更新时间')
+      chalk.dim('  ' + padEndW('ID', 24) + padEndW('名称', 20) + padEndW('类型', 12) + '更新时间')
     );
     console.log(chalk.dim('  ' + '-'.repeat(70)));
     for (const t of templates) {
       const date = new Date(t.updatedAt).toLocaleString('zh-CN');
-      console.log(`  ${chalk.green(t.id.padEnd(24))}${t.name.padEnd(16)}${t.type.padEnd(12)}${chalk.dim(date)}`);
+      console.log(`  ${chalk.green(padEndW(t.id, 24))}${padEndW(t.name, 20)}${padEndW(t.type, 12)}${chalk.dim(date)}`);
     }
     console.log();
   });
@@ -347,19 +366,37 @@ async function collectProject() {
   ]);
 
   if (mode === 'import') {
-    return inquirer.prompt([
+    const { source } = await inquirer.prompt([
       { type: 'input', name: 'source', message: 'Git 仓库地址:', validate: (v: string) => v.trim() ? true : 'Git 仓库地址不能为空' },
-      { type: 'input', name: 'branch', message: 'Git 分支:', default: 'master' },
+    ]);
+    const repoUrl = source.trim();
+
+    const defaultBranch = getRemoteDefaultBranch(repoUrl);
+    let branch = '';
+    while (true) {
+      const ans = await inquirer.prompt([
+        { type: 'input', name: 'branch', message: 'Git 分支:', default: defaultBranch },
+      ]);
+      branch = ans.branch.trim();
+      if (!branch) { console.log(chalk.yellow('分支名不能为空')); continue; }
+      console.log(chalk.dim(`  正在验证分支 "${branch}" ...`));
+      if (remoteBranchExists(repoUrl, branch)) break;
+      console.log(chalk.yellow(`  分支 "${branch}" 在远端仓库中不存在，请重新输入`));
+    }
+
+    const rest = await inquirer.prompt([
       {
         type: 'input', name: 'name', message: '项目名称:',
-        default: (answers: any) => {
-          const match = (answers.source?.trim() || '').match(/\/([^/]+?)(\.git)?$/);
+        default: () => {
+          const match = repoUrl.match(/\/([^/]+?)(\.git)?$/);
           return match ? match[1] : '';
         },
         validate: (v: string) => v.trim().length >= 3 ? true : '至少 3 个字符',
       },
       { type: 'list', name: 'makeTool', message: '构建工具:', choices: ['make', 'ninja'], default: 'make' },
     ]);
+
+    return { source: repoUrl, branch, ...rest };
   }
 
   return inquirer.prompt([

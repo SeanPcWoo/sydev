@@ -1,30 +1,6 @@
 {
   "templates": [
     {
-      "id": "测试全流程",
-      "name": "测试全流程",
-      "description": "UAT 测试用完整模板",
-      "type": "full",
-      "createdAt": "2026-03-15T11:43:28.303Z",
-      "updatedAt": "2026-03-15T11:43:28.303Z"
-    },
-    {
-      "id": "基础环境",
-      "name": "基础环境",
-      "description": "仅 workspace 配置",
-      "type": "workspace",
-      "createdAt": "2026-03-15T11:43:28.304Z",
-      "updatedAt": "2026-03-15T11:43:28.304Z"
-    },
-    {
-      "id": "rk3568-lts-arm64",
-      "name": "rk3568-lts-arm64",
-      "description": "rk3568-lts-arm64",
-      "type": "full",
-      "createdAt": "2026-03-15T11:48:08.192Z",
-      "updatedAt": "2026-03-15T11:48:08.192Z"
-    },
-    {
       "id": "rk3568",
       "name": "rk3568",
       "description": "",
@@ -33,28 +9,12 @@
       "updatedAt": "2026-03-15T12:02:41.029Z"
     },
     {
-      "id": "rk3568-ecs-64bit",
-      "name": "rk3568-ecs-64bit",
+      "id": "rk3568-dw-64",
+      "name": "rk3568-dw-64",
       "description": "",
       "type": "full",
-      "createdAt": "2026-03-15T12:15:49.469Z",
-      "updatedAt": "2026-03-15T12:15:49.469Z"
-    },
-    {
-      "id": "test",
-      "name": "test",
-      "description": "",
-      "type": "full",
-      "createdAt": "2026-03-15T12:22:41.468Z",
-      "updatedAt": "2026-03-15T12:22:41.468Z"
-    },
-    {
-      "id": "ggg",
-      "name": "ggg",
-      "description": "",
-      "type": "project",
-      "createdAt": "2026-03-15T13:02:34.976Z",
-      "updatedAt": "2026-03-15T13:12:57.495Z"
+      "createdAt": "2026-03-16T13:54:27.825Z",
+      "updatedAt": "2026-03-16T13:54:27.825Z"
     }
   ]
 }

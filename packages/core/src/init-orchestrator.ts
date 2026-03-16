@@ -52,19 +52,21 @@ export class InitOrchestrator {
     const wsResult = await this.rlWrapper.initWorkspace(parsed.workspace);
     if (!wsResult.success) {
       const wsError = wsResult.error ?? 'workspace 初始化失败';
-      this.progressReporter.reportError(wsError);
-      // workspace 失败必须停止，后续步骤依赖它
-      return {
-        success: false,
-        completedSteps,
-        failedSteps: [{ step: 'workspace', error: wsError }],
-        failedStep: 'workspace',
-        error: wsError,
-      };
+      failedSteps.push({ step: 'workspace', error: wsError });
+      if (options?.onStepError) {
+        const shouldContinue = await options.onStepError('workspace', wsError);
+        if (!shouldContinue) {
+          return { success: false, completedSteps, failedSteps, failedStep: 'workspace', error: wsError };
+        }
+      } else {
+        this.progressReporter.reportError(wsError);
+        return { success: false, completedSteps, failedSteps, failedStep: 'workspace', error: wsError };
+      }
+    } else {
+      completedSteps.push('workspace');
+      this.progressReporter.reportStep('workspace', 100);
     }
-    completedSteps.push('workspace');
     currentStep++;
-    this.progressReporter.reportStep('workspace', 100);
 
     // 3. 顺序创建 projects
     for (const project of parsed.projects ?? []) {
@@ -78,7 +80,7 @@ export class InitOrchestrator {
         const projError = projResult.error ?? `项目 ${project.name} 创建失败`;
         failedSteps.push({ step: stepName, error: projError });
         if (options?.onStepError) {
-          this.progressReporter.reportStep(stepName, 100);
+          this.progressReporter.reportError(projError);
           const shouldContinue = await options.onStepError(stepName, projError);
           if (!shouldContinue) {
             return { success: false, completedSteps, failedSteps, failedStep: stepName, error: projError };
@@ -106,7 +108,7 @@ export class InitOrchestrator {
         const devError = devResult.error ?? `设备 ${device.name} 添加失败`;
         failedSteps.push({ step: stepName, error: devError });
         if (options?.onStepError) {
-          this.progressReporter.reportStep(stepName, 100);
+          this.progressReporter.reportError(devError);
           const shouldContinue = await options.onStepError(stepName, devError);
           if (!shouldContinue) {
             return { success: false, completedSteps, failedSteps, failedStep: stepName, error: devError };

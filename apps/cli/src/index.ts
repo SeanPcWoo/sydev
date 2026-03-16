@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 import { Command } from 'commander';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
@@ -8,24 +7,26 @@ import { checkEnvironment } from '@sydev/core';
 import { workspaceCommand } from './commands/workspace.js';
 import { projectCommand } from './commands/project.js';
 import { deviceCommand } from './commands/device.js';
-import { createCompletionCommand } from './commands/completion.js';
 import { templateCommand } from './commands/template.js';
 import { initCommand } from './commands/init.js';
-import { webCommand } from './commands/web.js';
 import { formatHelp } from './utils/help-formatter.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const packageJson = JSON.parse(
-  readFileSync(join(__dirname, '../package.json'), 'utf-8')
-);
+function getVersion(): string {
+  if (process.env.SYDEV_VERSION) return process.env.SYDEV_VERSION;
+  try {
+    const dir = dirname(fileURLToPath(import.meta.url));
+    return JSON.parse(readFileSync(join(dir, '../package.json'), 'utf-8')).version;
+  } catch {
+    return '0.0.0-dev';
+  }
+}
 
 const program = new Command();
 
 program
   .name('sydev')
   .description('SylixOS 开发环境快速部署工具')
-  .version(packageJson.version, '-v, --version', '显示版本信息')
+  .version(getVersion(), '-v, --version', '显示版本信息')
   .helpOption('-h, --help', '显示帮助信息')
   .configureHelp({
     formatHelp: (cmd, helper) => formatHelp(cmd, helper)
@@ -38,23 +39,12 @@ program.hook('preAction', async (thisCommand, actionCommand) => {
     return;
   }
 
-  // 跳过 completion 命令的环境检查（不需要 RealEvo-Stream 环境）
-  // 检查 process.argv 中是否包含 completion
-  if (process.argv.includes('completion')) {
-    return;
-  }
-
   // 跳过 template（除 apply 外）和 init 命令的环境检查
   const argv = process.argv;
   if (argv.includes('template') && !argv.includes('apply')) {
     return;
   }
   if (argv.includes('init')) {
-    return;
-  }
-
-  // 跳过 web 命令的环境检查（Web 服务不需要 RealEvo-Stream 环境）
-  if (argv.includes('web')) {
     return;
   }
 
@@ -79,8 +69,6 @@ program.addCommand(projectCommand);
 program.addCommand(deviceCommand);
 program.addCommand(templateCommand);
 program.addCommand(initCommand);
-program.addCommand(webCommand);
-program.addCommand(createCompletionCommand(program));
 
 // 解析命令行参数
 program.parse();

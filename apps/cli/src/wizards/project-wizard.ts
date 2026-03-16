@@ -7,6 +7,7 @@ import {
   type ProjectConfig
 } from '@sydev/core';
 import { createCliProgressReporter } from '../utils/cli-progress.js';
+import { getRemoteDefaultBranch, remoteBranchExists } from '../utils/git.js';
 
 export async function runProjectWizard(): Promise<void> {
   console.log(chalk.bold.cyan('\n📦 项目创建向导\n'));
@@ -41,7 +42,7 @@ export async function runProjectWizard(): Promise<void> {
   // 第二阶段：根据选择分支处理
   if (phase1.mode === 'import') {
     // 导入模式
-    const importAnswers = await inquirer.prompt([
+    const { source } = await inquirer.prompt([
       {
         type: 'input',
         name: 'source',
@@ -53,20 +54,29 @@ export async function runProjectWizard(): Promise<void> {
           return true;
         }
       },
-      {
-        type: 'input',
-        name: 'branch',
-        message: 'Git 分支:',
-        default: 'master'
-      },
+    ]);
+    const repoUrl = source.trim();
+
+    const defaultBranch = getRemoteDefaultBranch(repoUrl);
+    let branch = '';
+    while (true) {
+      const ans = await inquirer.prompt([
+        { type: 'input', name: 'branch', message: 'Git 分支:', default: defaultBranch },
+      ]);
+      branch = ans.branch.trim();
+      if (!branch) { console.log(chalk.yellow('分支名不能为空')); continue; }
+      console.log(chalk.dim(`  正在验证分支 "${branch}" ...`));
+      if (remoteBranchExists(repoUrl, branch)) break;
+      console.log(chalk.yellow(`  分支 "${branch}" 在远端仓库中不存在，请重新输入`));
+    }
+
+    const importRest = await inquirer.prompt([
       {
         type: 'input',
         name: 'name',
         message: '项目名称:',
-        default: (answers: any) => {
-          // 从 git 仓库 URL 提取项目名称
-          const source = answers.source?.trim() || '';
-          const match = source.match(/\/([^/]+?)(\.git)?$/);
+        default: () => {
+          const match = repoUrl.match(/\/([^/]+?)(\.git)?$/);
           return match ? match[1] : '';
         },
         validate: (input: string) => {
@@ -96,10 +106,10 @@ export async function runProjectWizard(): Promise<void> {
     ]);
 
     config = {
-      name: importAnswers.name.trim(),
-      source: importAnswers.source.trim(),
-      branch: importAnswers.branch.trim(),
-      makeTool: importAnswers.makeTool
+      name: importRest.name.trim(),
+      source: repoUrl,
+      branch,
+      makeTool: importRest.makeTool
     };
   } else {
     // 新建模式
