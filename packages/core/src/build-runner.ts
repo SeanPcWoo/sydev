@@ -65,6 +65,13 @@ export class BuildRunner extends EventEmitter {
     } catch {
       // config.json not found or invalid
     }
+    // 自动添加 base 工程（如果存在 Makefile）
+    if (this.basePath && existsSync(join(this.basePath, 'Makefile'))) {
+      const hasBase = this.projects.some(p => p.name === 'base');
+      if (!hasBase) {
+        this.projects.unshift({ name: 'base', path: this.basePath });
+      }
+    }
   }
 
   /** 生成 .sydev/Makefile 内容 */
@@ -93,25 +100,34 @@ export class BuildRunner extends EventEmitter {
     lines.push('# ─── 工程 Targets ───────────────────────────────────────────────');
 
     // .PHONY 声明（防止目录名与 target 同名导致 make 跳过）
-    const phonyTargets = this.projects.flatMap(p => [p.name, `clean-${p.name}`, `rebuild-${p.name}`, `cp-${p.name}`]);
+    const phonyTargets = this.projects.flatMap(p => {
+      const targets = [p.name, `clean-${p.name}`, `rebuild-${p.name}`];
+      if (p.name !== 'base') targets.push(`cp-${p.name}`);
+      return targets;
+    });
     lines.push('');
     lines.push(`.PHONY: ${phonyTargets.join(' ')}`);
 
     for (const project of this.projects) {
       const n = project.name;
+      const isBase = n === 'base';
       lines.push('');
       lines.push(`# ${n}`);
       lines.push(`${n}:`);
-      lines.push(`\tbear --append -- make -C ${project.path}`);
+      lines.push(isBase
+        ? `\tmake -C ${project.path}`
+        : `\tbear --append -- make -C ${project.path}`);
       lines.push('');
       lines.push(`clean-${n}:`);
       lines.push(`\tmake -C ${project.path} clean`);
       lines.push('');
       lines.push(`rebuild-${n}: clean-${n} ${n}`);
-      lines.push('');
-      lines.push(`cp-${n}:`);
-      lines.push(`\t# TODO: 配置产物复制路径`);
-      lines.push(`\t# cp ${project.path}/Debug/${n}.so /path/to/destination`);
+      if (!isBase) {
+        lines.push('');
+        lines.push(`cp-${n}:`);
+        lines.push(`\t# TODO: 配置产物复制路径`);
+        lines.push(`\t# cp ${project.path}/Debug/${n}.so /path/to/destination`);
+      }
     }
 
     // demo 编译模板（仅全新生成时包含）
