@@ -37,7 +37,11 @@
   4. 编译完成后用户可以看到错误汇总（哪些工程失败、失败原因）
   5. 编译过程自动注入所有 WORKSPACE_工程名 环境变量，无需用户手动配置
   6. 用户运行 `sydev build init` 可以生成/更新 workspace 总 Makefile，脱离 sydev 也能直接 make 编译
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 04-01-PLAN.md — Core build engine: WorkspaceScanner + BuildRunner in @sydev/core
+- [ ] 04-02-PLAN.md — CLI build command: interactive/single/--all + build init Makefile generation
 
 ### Phase 5: 产物上传
 **Goal**: 用户可以通过 sydev upload 命令将编译产物上传到目标设备
@@ -71,9 +75,9 @@
 | 1. CLI 核心功能 | v1.0 | 9/9 | Complete | 2026-03-14 |
 | 2. 模板与配置系统 | v1.0 | 3/3 | Complete | 2026-03-15 |
 | 3. Web UI 与批量操作 | v1.0 | 5/5 | Complete (removed) | 2026-03-15 |
-| 4. 工程编译 | v2.0 | 0/? | Not started | - |
+| 4. 工程编译 | v2.0 | 0/2 | In progress | - |
 | 5. 产物上传 | v2.0 | 0/? | Not started | - |
 | 6. 工作流配置 | v2.0 | 0/? | Not started | - |
 
 ---
-*Last updated: 2026-03-17 after v2.0 roadmap creation*
+*Last updated: 2026-03-17 after phase 4 planning*
