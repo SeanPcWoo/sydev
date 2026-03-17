@@ -66,3 +66,15 @@ export type {
   ToolchainCheckResult,
   EnvironmentStatus
 } from './types.js';
+
+// 工程扫描
+export { WorkspaceScanner, type ScannedProject } from './workspace-scanner.js';
+
+// 编译执行
+export {
+  BuildRunner,
+  type BuildOptions,
+  type BuildProjectResult,
+  type BuildResult,
+  type BuildProgressEvent,
+} from './build-runner.js';
