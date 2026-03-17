@@ -6,6 +6,7 @@ import chalk from 'chalk';
 import { checkEnvironment } from '@sydev/core';
 import { workspaceCommand } from './commands/workspace.js';
 import { projectCommand } from './commands/project.js';
+import { buildCommand } from './commands/build.js';
 import { deviceCommand } from './commands/device.js';
 import { templateCommand } from './commands/template.js';
 import { initCommand } from './commands/init.js';
@@ -47,6 +48,9 @@ program.hook('preAction', async (thisCommand, actionCommand) => {
   if (argv.includes('init')) {
     return;
   }
+  if (argv.includes('build')) {
+    return;
+  }
 
   // 执行环境检查
   const envStatus = await checkEnvironment();
@@ -66,6 +70,7 @@ program.hook('preAction', async (thisCommand, actionCommand) => {
 // 注册子命令
 program.addCommand(workspaceCommand);
 program.addCommand(projectCommand);
+program.addCommand(buildCommand);
 program.addCommand(deviceCommand);
 program.addCommand(templateCommand);
 program.addCommand(initCommand);
