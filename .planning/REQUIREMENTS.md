@@ -17,6 +17,7 @@ Requirements for v2.0 milestone. Each maps to roadmap phases.
 - [ ] **BUILD-06**: 编译完成后错误汇总（失败工程、失败原因）
 - [ ] **BUILD-07**: 用户可以定义编译流水线（工程依赖顺序、编译后动作如 cp 产物）
 - [ ] **BUILD-08**: 编译流水线配置保存在 workspace 目录下
+- [ ] **BUILD-09**: 用户可以通过 `sydev build init` 生成/更新 workspace 总 Makefile，脱离 sydev 也能直接 make 编译
 
 ### 上传 (UPLOAD)
 
@@ -46,28 +47,29 @@ Requirements for v2.0 milestone. Each maps to roadmap phases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BUILD-01 | — | Pending |
-| BUILD-02 | — | Pending |
-| BUILD-03 | — | Pending |
-| BUILD-04 | — | Pending |
-| BUILD-05 | — | Pending |
-| BUILD-06 | — | Pending |
-| BUILD-07 | — | Pending |
-| BUILD-08 | — | Pending |
-| UPLOAD-01 | — | Pending |
-| UPLOAD-02 | — | Pending |
-| UPLOAD-03 | — | Pending |
-| UPLOAD-04 | — | Pending |
-| UPLOAD-05 | — | Pending |
-| UPLOAD-06 | — | Pending |
-| UPLOAD-07 | — | Pending |
-| UPLOAD-08 | — | Pending |
+| BUILD-01 | Phase 4 | Pending |
+| BUILD-02 | Phase 4 | Pending |
+| BUILD-03 | Phase 4 | Pending |
+| BUILD-04 | Phase 4 | Pending |
+| BUILD-05 | Phase 4 | Pending |
+| BUILD-06 | Phase 4 | Pending |
+| BUILD-07 | Phase 6 | Pending |
+| BUILD-08 | Phase 6 | Pending |
+| BUILD-09 | Phase 4 | Pending |
+| UPLOAD-01 | Phase 5 | Pending |
+| UPLOAD-02 | Phase 5 | Pending |
+| UPLOAD-03 | Phase 5 | Pending |
+| UPLOAD-04 | Phase 5 | Pending |
+| UPLOAD-05 | Phase 5 | Pending |
+| UPLOAD-06 | Phase 5 | Pending |
+| UPLOAD-07 | Phase 6 | Pending |
+| UPLOAD-08 | Phase 6 | Pending |
 
 **Coverage:**
-- v2.0 requirements: 16 total
-- Mapped to phases: 0
-- Unmapped: 16 ⚠️
+- v2.0 requirements: 17 total
+- Mapped to phases: 17/17
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-17*
-*Last updated: 2026-03-17 after initial definition*
+*Last updated: 2026-03-17 after roadmap creation*

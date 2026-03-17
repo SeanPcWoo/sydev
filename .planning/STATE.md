@@ -5,7 +5,7 @@ milestone_name: 编译与部署
 status: active
 last_updated: "2026-03-17"
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,20 +21,40 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-17)
 
 **Core value:** 开发者能够在 5 分钟内从零开始完成一个可用的 SylixOS 开发环境搭建，并通过统一的 CLI 完成编译和部署工作流
-**Current focus:** v2.0 编译与部署
+**Current focus:** Phase 4 — 工程编译
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 4 of 6 (工程编译) — first phase of v2.0
 Plan: —
-Status: Defining requirements
-Last activity: 2026-03-17 — Milestone v2.0 started
+Status: Ready to plan
+Last activity: 2026-03-17 — v2.0 roadmap created
+
+Progress: [░░░░░░░░░░] 0%
+
+## Performance Metrics
+
+**Velocity:**
+- Total plans completed: 0 (v2.0)
+- Average duration: —
+- Total execution time: —
+
+*Updated after each plan completion*
 
 ## Accumulated Context
 
 ### Key Decisions
 
 See PROJECT.md Key Decisions table for full log.
+Recent decisions affecting current work:
+
+- v2.0: 绕过 rl 编译，直接调用 make
+- v2.0: 编译/部署配置跟随 workspace 存储
+- v2.0: FTP 部署而非 rl deploy
+
+### Pending Todos
+
+None yet.
 
 ### Known Blockers
 
@@ -42,8 +62,8 @@ None
 
 ## Session Continuity
 
-**Last command:** /gsd:new-milestone
-**Next command:** Define requirements → create roadmap
+**Last command:** /gsd:create-roadmap
+**Next command:** /gsd:plan-phase 4
 
 ---
 *State initialized: 2026-03-14*
