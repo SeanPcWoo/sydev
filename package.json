@@ -1,8 +1,11 @@
 {
     "name": "@haawpc/sydev",
-    "version": "0.2.2",
+    "version": "0.2.4",
     "private": true,
     "type": "module",
+    "bin": {
+        "sydev": "./bin/sydev.js"
+    },
     "description": "SylixOS 开发环境快速部署工具",
     "engines": {
         "node": ">=18.0.0"
