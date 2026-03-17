@@ -68,7 +68,7 @@ export class BuildRunner extends EventEmitter {
   }
 
   /** 生成 .sydev/Makefile 内容 */
-  private generateMakefile(): string {
+  private generateMakefile(includeDemo = true): string {
     const lines: string[] = [
       '# SylixOS Workspace Makefile',
       '# 由 sydev 自动生成/更新',
@@ -92,15 +92,20 @@ export class BuildRunner extends EventEmitter {
 
     lines.push('# ─── 工程 Targets ───────────────────────────────────────────────');
 
+    // .PHONY 声明（防止目录名与 target 同名导致 make 跳过）
+    const phonyTargets = this.projects.flatMap(p => [p.name, `clean-${p.name}`, `rebuild-${p.name}`, `cp-${p.name}`]);
+    lines.push('');
+    lines.push(`.PHONY: ${phonyTargets.join(' ')}`);
+
     for (const project of this.projects) {
       const n = project.name;
       lines.push('');
       lines.push(`# ${n}`);
       lines.push(`${n}:`);
-      lines.push(`\tbear -- make -C ${project.path}`);
+      lines.push(`\tbear --append -- make -C ${project.path}`);
       lines.push('');
       lines.push(`clean-${n}:`);
-      lines.push(`\t$(MAKE) -C ${project.path} clean`);
+      lines.push(`\tmake -C ${project.path} clean`);
       lines.push('');
       lines.push(`rebuild-${n}: clean-${n} ${n}`);
       lines.push('');
@@ -109,19 +114,21 @@ export class BuildRunner extends EventEmitter {
       lines.push(`\t# cp ${project.path}/Debug/${n}.so /path/to/destination`);
     }
 
-    // demo 编译模板
-    lines.push('');
-    lines.push('# ─── 编译模板（__ 开头，可自行修改） ─────────────────────────────');
-    lines.push('');
-    lines.push('__demo:');
-    const demoTargets = this.projects.slice(0, 3).map(p => p.name);
-    for (const t of demoTargets) {
-      lines.push(`\t$(MAKE) -f $(lastword $(MAKEFILE_LIST)) ${t}`);
+    // demo 编译模板（仅全新生成时包含）
+    if (includeDemo) {
+      lines.push('');
+      lines.push('# ─── 编译模板（__ 开头，可自行修改） ─────────────────────────────');
+      lines.push('');
+      lines.push('__demo:');
+      const demoTargets = this.projects.slice(0, 3).map(p => p.name);
+      for (const t of demoTargets) {
+        lines.push(`\tmake ${t}`);
+      }
+      if (demoTargets.length === 0) {
+        lines.push('\t# 在此添加编译步骤，例如: make <工程名>');
+      }
+      lines.push('');
     }
-    if (demoTargets.length === 0) {
-      lines.push('\t# 在此添加编译步骤，例如: $(MAKE) -f $(lastword $(MAKEFILE_LIST)) <工程名>');
-    }
-    lines.push('');
 
     return lines.join('\n');
   }
@@ -198,6 +205,17 @@ export class BuildRunner extends EventEmitter {
     const removed = [...managedProjects].filter(n => !currentNames.has(n));
 
     if (added.length === 0 && removed.length === 0) {
+      // 如果缺少 .PHONY 声明，强制重新生成
+      if (!existing.includes('.PHONY:')) {
+        const generated = this.generateMakefile(false);
+        if (userBlocks.length > 0) {
+          const userSection = '\n# ─── 用户编译模板（__ 开头，sydev 不会修改） ──────────────────\n\n' + userBlocks.join('\n\n') + '\n';
+          writeFileSync(this.makefilePath, generated + userSection, 'utf-8');
+        } else {
+          writeFileSync(this.makefilePath, generated, 'utf-8');
+        }
+        return;
+      }
       // 只更新 WORKSPACE_ 变量和 SYLIXOS_BASE_PATH（路径可能变）
       let updated = existing;
       // 更新 WORKSPACE_ 变量区域
@@ -222,7 +240,7 @@ export class BuildRunner extends EventEmitter {
     }
 
     // 有增删：重新生成管理区域，保留用户块
-    const generated = this.generateMakefile();
+    const generated = this.generateMakefile(false);
     if (userBlocks.length > 0) {
       const userSection = '\n# ─── 用户编译模板（__ 开头，sydev 不会修改） ──────────────────\n\n' + userBlocks.join('\n\n') + '\n';
       writeFileSync(this.makefilePath, generated + userSection, 'utf-8');
@@ -231,7 +249,7 @@ export class BuildRunner extends EventEmitter {
     }
   }
 
-  /** 更新工程 config.mk 中的 SYLIXOS_BASE_PATH */
+  /** 更新工程 config.mk 中的 SYLIXOS_BASE_PATH 和 PLATFORM_NAME */
   private patchConfigMk(project: ScannedProject): void {
     if (!this.basePath) return;
     const configMkPath = join(project.path, 'config.mk');
@@ -241,10 +259,35 @@ export class BuildRunner extends EventEmitter {
     } catch {
       return;
     }
-    const updated = content.replace(
+    // 更新 SYLIXOS_BASE_PATH
+    let updated = content.replace(
       /^(SYLIXOS_BASE_PATH\s*[?:]?=\s*).*$/m,
       `$1${this.basePath}`
     );
+
+    // 检查 base 的 config.mk 是否启用了 MULTI_PLATFORM_BUILD
+    const baseConfigMkPath = join(this.basePath, 'config.mk');
+    try {
+      const baseContent = readFileSync(baseConfigMkPath, 'utf-8');
+      const multiMatch = baseContent.match(/^MULTI_PLATFORM_BUILD\s*[?:]?=\s*(.+)$/m);
+      if (multiMatch && multiMatch[1].trim().toLowerCase() === 'yes') {
+        const platformsMatch = baseContent.match(/^PLATFORMS\s*[?:]?=\s*(.+)$/m);
+        if (platformsMatch) {
+          const platformsValue = platformsMatch[1].trim();
+          const platformRe = /^PLATFORM_NAME\s*[?:]?=\s*/m;
+          if (!platformRe.test(updated)) {
+            // PLATFORM_NAME 不存在，在 SYLIXOS_BASE_PATH 行后插入
+            updated = updated.replace(
+              /^(SYLIXOS_BASE_PATH\s*[?:]?=\s*.*)$/m,
+              `$1\nPLATFORM_NAME = ${platformsValue}`
+            );
+          }
+        }
+      }
+    } catch {
+      // base config.mk 不存在，跳过
+    }
+
     if (updated !== content) {
       writeFileSync(configMkPath, updated, 'utf-8');
     }
@@ -258,11 +301,9 @@ export class BuildRunner extends EventEmitter {
       .slice(0, 10);
   }
 
-  /** 编译单个工程 */
-  async buildOne(project: ScannedProject, options?: BuildOptions): Promise<BuildProjectResult> {
-    this.patchConfigMk(project);
-
-    const args = ['-f', this.makefilePath, project.name];
+  /** 执行指定 Makefile target */
+  private runTarget(project: ScannedProject, target: string, options?: BuildOptions): Promise<BuildProjectResult> {
+    const args = ['-f', this.makefilePath, target];
     if (options?.extraArgs && options.extraArgs.length > 0) {
       args.push(...options.extraArgs);
     }
@@ -298,7 +339,7 @@ export class BuildRunner extends EventEmitter {
 
       const sigintHandler = () => {
         proc.kill('SIGTERM');
-        reject(new Error(`Build cancelled (SIGINT) for project: ${project.name}`));
+        reject(new Error(`Cancelled (SIGINT) for project: ${project.name}`));
       };
       process.once('SIGINT', sigintHandler);
 
@@ -330,5 +371,22 @@ export class BuildRunner extends EventEmitter {
         reject(err);
       });
     });
+  }
+
+  /** clean 单个工程 */
+  async cleanOne(project: ScannedProject, options?: BuildOptions): Promise<BuildProjectResult> {
+    return this.runTarget(project, `clean-${project.name}`, options);
+  }
+
+  /** 编译单个工程 */
+  async buildOne(project: ScannedProject, options?: BuildOptions): Promise<BuildProjectResult> {
+    this.patchConfigMk(project);
+    return this.runTarget(project, project.name, options);
+  }
+
+  /** rebuild 单个工程（clean + build） */
+  async rebuildOne(project: ScannedProject, options?: BuildOptions): Promise<BuildProjectResult> {
+    this.patchConfigMk(project);
+    return this.runTarget(project, `rebuild-${project.name}`, options);
   }
 }

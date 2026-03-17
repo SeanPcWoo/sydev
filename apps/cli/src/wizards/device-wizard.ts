@@ -53,11 +53,12 @@ export async function runDeviceWizard(): Promise<void> {
       }
     },
     {
-      type: 'list',
+      type: 'checkbox',
       name: 'platform',
-      message: '设备平台:',
+      message: '设备平台 (多选):',
       choices: PLATFORMS,
-      default: 'ARM64_GENERIC'
+      default: ['ARM64_GENERIC'],
+      validate: (input: string[]) => input.length > 0 ? true : '至少选择一个平台'
     },
     {
       type: 'input',
@@ -129,12 +130,12 @@ export async function runDeviceWizard(): Promise<void> {
       message: '密码 (可选):',
       mask: '*'
     }
-  ]);
+  ] as any);
 
   const config: DeviceConfig = {
     name: answers.name.trim(),
     ip: answers.ip.trim(),
-    platform: answers.platform.trim(),
+    platform: answers.platform,
     ssh: parseInt(answers.ssh),
     telnet: parseInt(answers.telnet),
     ftp: parseInt(answers.ftp),
@@ -154,7 +155,7 @@ export async function runDeviceWizard(): Promise<void> {
   console.log(chalk.dim(`  Workspace: ${answers.cwd}`));
   console.log(chalk.dim(`  名称: ${config.name}`));
   console.log(chalk.dim(`  IP: ${config.ip}`));
-  console.log(chalk.dim(`  平台: ${config.platform}`));
+  console.log(chalk.dim(`  平台: ${config.platform.join(':')}`));
   console.log(chalk.dim(`  SSH: ${config.ssh}`));
   console.log(chalk.dim(`  Telnet: ${config.telnet}`));
   console.log(chalk.dim(`  FTP: ${config.ftp}`));

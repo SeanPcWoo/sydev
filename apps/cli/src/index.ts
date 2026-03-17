@@ -7,6 +7,8 @@ import { checkEnvironment } from '@sydev/core';
 import { workspaceCommand } from './commands/workspace.js';
 import { projectCommand } from './commands/project.js';
 import { buildCommand } from './commands/build.js';
+import { cleanCommand } from './commands/clean.js';
+import { rebuildCommand } from './commands/rebuild.js';
 import { deviceCommand } from './commands/device.js';
 import { templateCommand } from './commands/template.js';
 import { initCommand } from './commands/init.js';
@@ -48,7 +50,7 @@ program.hook('preAction', async (thisCommand, actionCommand) => {
   if (argv.includes('init')) {
     return;
   }
-  if (argv.includes('build')) {
+  if (argv.includes('build') || argv.includes('clean') || argv.includes('rebuild')) {
     return;
   }
 
@@ -71,6 +73,8 @@ program.hook('preAction', async (thisCommand, actionCommand) => {
 program.addCommand(workspaceCommand);
 program.addCommand(projectCommand);
 program.addCommand(buildCommand);
+program.addCommand(cleanCommand);
+program.addCommand(rebuildCommand);
 program.addCommand(deviceCommand);
 program.addCommand(templateCommand);
 program.addCommand(initCommand);

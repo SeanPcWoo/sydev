@@ -104,7 +104,7 @@ function parseRlError(output: string): { error: string; fixSuggestion: string } 
 export interface WorkspaceInitOptions {
   cwd: string;
   basePath: string;
-  platform: string;
+  platform: string[];
   version: string;
   createbase?: boolean;
   build?: boolean;
@@ -126,7 +126,7 @@ export interface ProjectCreateOptions {
 export interface DeviceAddOptions {
   name: string;
   ip: string;
-  platform: string;
+  platform: string[];
   ssh?: number;
   telnet?: number;
   ftp?: number;
@@ -145,7 +145,7 @@ export class RlWrapper {
     const args = [
       'init',
       `--base=${config.basePath}`,
-      `--platform=${config.platform}`,
+      `--platform=${Array.isArray(config.platform) ? config.platform.join(':') : config.platform}`,
       `--version=${config.version}`
     ];
     if (config.createbase !== undefined) args.push(`--createbase=${config.createbase}`);
@@ -197,7 +197,7 @@ export class RlWrapper {
       'add',
       `--name=${config.name}`,
       `--ip=${config.ip}`,
-      `--platform=${config.platform}`
+      `--platform=${Array.isArray(config.platform) ? config.platform.join(':') : config.platform}`
     ];
     if (config.ssh !== undefined) args.push(`--ssh=${config.ssh}`);
     if (config.telnet !== undefined) args.push(`--telnet=${config.telnet}`);

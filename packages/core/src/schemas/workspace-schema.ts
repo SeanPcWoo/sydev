@@ -33,9 +33,9 @@ export const PLATFORM_VALUES = [
 export const workspaceSchema = z.object({
   cwd: z.string().min(1, "工作路径不能为空"),
   basePath: z.string().min(1, "Base 路径不能为空"),
-  platform: z.enum(PLATFORM_VALUES, {
+  platform: z.array(z.enum(PLATFORM_VALUES, {
     errorMap: () => ({ message: "不支持的平台，请参考 RealEvo-Stream 文档" })
-  }),
+  })).min(1, "至少选择一个平台"),
   version: z.enum([
     'default',
     'ecs_3.6.5',

@@ -85,11 +85,12 @@ export async function runWorkspaceWizard(): Promise<void> {
       }
     },
     {
-      type: 'list',
+      type: 'checkbox',
       name: 'platform',
-      message: '目标平台:',
+      message: '目标平台 (多选):',
       choices: PLATFORMS,
-      default: 'ARM64_GENERIC'
+      default: ['ARM64_GENERIC'],
+      validate: (input: string[]) => input.length > 0 ? true : '至少选择一个平台'
     },
     {
       type: 'list',
@@ -125,7 +126,7 @@ export async function runWorkspaceWizard(): Promise<void> {
       default: false,
       when: (answers: any) => answers.version !== 'research' && answers.version !== 'custom'
     }
-  ]);
+  ] as any);
 
   const isResearch = answers.version === 'research';
   const isCustom = answers.version === 'custom';
@@ -156,7 +157,7 @@ export async function runWorkspaceWizard(): Promise<void> {
   console.log(chalk.bold('\n📋 配置摘要:'));
   console.log(chalk.dim(`  工作路径: ${config.cwd}`));
   console.log(chalk.dim(`  Base 路径: ${config.basePath}`));
-  console.log(chalk.dim(`  平台: ${config.platform}`));
+  console.log(chalk.dim(`  平台: ${config.platform.join(':')}`));
   console.log(chalk.dim(`  版本: ${isCloneMode ? `${answers.version} (lts_3.6.5, 分支: ${cloneBranch})` : config.version}`));
   console.log(chalk.dim(`  操作系统: ${config.os}`));
   console.log(chalk.dim(`  调试级别: ${config.debugLevel}`));
