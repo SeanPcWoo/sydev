@@ -75,7 +75,7 @@ Plans:
 | 1. CLI 核心功能 | v1.0 | 9/9 | Complete | 2026-03-14 |
 | 2. 模板与配置系统 | v1.0 | 3/3 | Complete | 2026-03-15 |
 | 3. Web UI 与批量操作 | v1.0 | 5/5 | Complete (removed) | 2026-03-15 |
-| 4. 工程编译 | v2.0 | 0/2 | In progress | - |
+| 4. 工程编译 | 1/2 | In Progress|  | - |
 | 5. 产物上传 | v2.0 | 0/? | Not started | - |
 | 6. 工作流配置 | v2.0 | 0/? | Not started | - |
 

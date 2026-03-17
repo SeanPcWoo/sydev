@@ -9,12 +9,12 @@ Requirements for v2.0 milestone. Each maps to roadmap phases.
 
 ### 编译 (BUILD)
 
-- [ ] **BUILD-01**: 用户可以扫描 workspace 子目录自动识别工程列表
+- [x] **BUILD-01**: 用户可以扫描 workspace 子目录自动识别工程列表
 - [ ] **BUILD-02**: 用户可以编译单个指定工程（`sydev build <工程名>`）
 - [ ] **BUILD-03**: 用户可以编译全部工程（`sydev build --all`）
-- [ ] **BUILD-04**: 编译时自动注入 workspace 所有 `WORKSPACE_工程名` 环境变量
-- [ ] **BUILD-05**: 编译过程实时进度显示（当前工程、成功/失败状态）
-- [ ] **BUILD-06**: 编译完成后错误汇总（失败工程、失败原因）
+- [x] **BUILD-04**: 编译时自动注入 workspace 所有 `WORKSPACE_工程名` 环境变量
+- [x] **BUILD-05**: 编译过程实时进度显示（当前工程、成功/失败状态）
+- [x] **BUILD-06**: 编译完成后错误汇总（失败工程、失败原因）
 - [ ] **BUILD-07**: 用户可以定义编译流水线（工程依赖顺序、编译后动作如 cp 产物）
 - [ ] **BUILD-08**: 编译流水线配置保存在 workspace 目录下
 - [ ] **BUILD-09**: 用户可以通过 `sydev build init` 生成/更新 workspace 总 Makefile，脱离 sydev 也能直接 make 编译
@@ -47,12 +47,12 @@ Requirements for v2.0 milestone. Each maps to roadmap phases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BUILD-01 | Phase 4 | Pending |
+| BUILD-01 | Phase 4 | Complete |
 | BUILD-02 | Phase 4 | Pending |
 | BUILD-03 | Phase 4 | Pending |
-| BUILD-04 | Phase 4 | Pending |
-| BUILD-05 | Phase 4 | Pending |
-| BUILD-06 | Phase 4 | Pending |
+| BUILD-04 | Phase 4 | Complete |
+| BUILD-05 | Phase 4 | Complete |
+| BUILD-06 | Phase 4 | Complete |
 | BUILD-07 | Phase 6 | Pending |
 | BUILD-08 | Phase 6 | Pending |
 | BUILD-09 | Phase 4 | Pending |
