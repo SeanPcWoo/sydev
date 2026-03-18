@@ -1,0 +1,8 @@
+{
+  "mode": "create",
+  "name": "my-app",
+  "template": "app",
+  "type": "cmake",
+  "debugLevel": "release",
+  "makeTool": "make"
+}

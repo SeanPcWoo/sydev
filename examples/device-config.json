@@ -1,0 +1,11 @@
+{
+  "name": "device-arm64",
+  "ip": "192.168.1.100",
+  "platforms": ["ARM64_GENERIC", "ARM64_A53"],
+  "username": "root",
+  "password": "root",
+  "ssh": 22,
+  "telnet": 23,
+  "ftp": 21,
+  "gdb": 1234
+}

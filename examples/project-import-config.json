@@ -1,0 +1,7 @@
+{
+  "mode": "import",
+  "name": "my-project",
+  "source": "https://github.com/example/repo.git",
+  "branch": "main",
+  "makeTool": "make"
+}

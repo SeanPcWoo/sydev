@@ -8,6 +8,96 @@ import {
   type DeviceConfig
 } from '@sydev/core';
 import { createCliProgressReporter } from '../utils/cli-progress.js';
+import type { DeviceOptions } from '../options/device-parser.js';
+
+/**
+ * 执行设备配置（由交互模式和非交互模式共享）
+ */
+export async function runDeviceInit(
+  options: DeviceOptions,
+  cwd?: string,
+  skipConfirm?: boolean
+): Promise<void> {
+  const workspacePath = cwd || process.cwd();
+
+  const config: DeviceConfig = {
+    name: options.name,
+    ip: options.ip,
+    platform: options.platforms as any,
+    ssh: options.ssh,
+    telnet: options.telnet,
+    ftp: options.ftp,
+    gdb: options.gdb,
+    username: options.username,
+    password: options.password,
+  };
+
+  // 验证配置
+  const validation = ConfigManager.validate(deviceSchema, config);
+  if (!validation.valid) {
+    console.error(chalk.red('\n✗ 配置验证失败:'));
+    validation.errors?.forEach(err => console.error(chalk.yellow(`  - ${err}`)));
+    process.exit(1);
+  }
+
+  // 显示配置摘要
+  console.log(chalk.bold('\n📋 配置摘要:'));
+  console.log(chalk.dim(`  Workspace 路径: ${workspacePath}`));
+  console.log(chalk.dim(`  设备名称: ${config.name}`));
+  console.log(chalk.dim(`  IP 地址: ${config.ip}`));
+  console.log(chalk.dim(`  平台: ${config.platform.join(':')}`));
+  console.log(chalk.dim(`  SSH 端口: ${config.ssh}`));
+  console.log(chalk.dim(`  Telnet 端口: ${config.telnet}`));
+  console.log(chalk.dim(`  FTP 端口: ${config.ftp}`));
+  console.log(chalk.dim(`  GDB 端口: ${config.gdb}`));
+  console.log(chalk.dim(`  用户名: ${config.username}`));
+
+  if (!skipConfirm) {
+    const { confirm } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'confirm',
+        message: '确认添加?',
+        default: true
+      }
+    ]);
+
+    if (!confirm) {
+      console.log(chalk.yellow('\n已取消'));
+      return;
+    }
+  }
+
+  console.log(chalk.cyan('\n开始添加设备...\n'));
+
+  const progressReporter = createCliProgressReporter();
+  const rlWrapper = new RlWrapper(progressReporter);
+
+  const result = await rlWrapper.addDevice({
+    name: config.name,
+    ip: config.ip,
+    platform: config.platform,
+    ssh: config.ssh,
+    telnet: config.telnet,
+    ftp: config.ftp,
+    gdb: config.gdb,
+    username: config.username,
+    password: config.password,
+    cwd: workspacePath
+  } as any);
+
+  if (result.success) {
+    console.log(chalk.bold.green('\n✓ 设备添加成功!\n'));
+  } else {
+    console.error(chalk.red(`\n✗ 添加失败: ${result.error}\n`));
+    if (result.fixSuggestion) {
+      console.error(chalk.cyan(`建议: ${result.fixSuggestion}\n`));
+    }
+    process.exit(1);
+  }
+
+  progressReporter.removeAllListeners();
+}
 
 export async function runDeviceWizard(): Promise<void> {
   console.log(chalk.bold.cyan('\n🔌 设备配置向导\n'));

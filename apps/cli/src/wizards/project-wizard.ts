@@ -8,6 +8,105 @@ import {
 } from '@sydev/core';
 import { createCliProgressReporter } from '../utils/cli-progress.js';
 import { getRemoteDefaultBranch, remoteBranchExists } from '../utils/git.js';
+import type { ProjectOptions } from '../options/project-parser.js';
+
+/**
+ * 执行项目创建（由交互模式和非交互模式共享）
+ */
+export async function runProjectInit(
+  options: ProjectOptions,
+  cwd?: string,
+  skipConfirm?: boolean
+): Promise<void> {
+  const workspacePath = cwd || process.cwd();
+
+  let config: ProjectConfig;
+
+  if (options.mode === 'import') {
+    config = {
+      name: options.name,
+      source: options.source!,
+      branch: options.branch!,
+      makeTool: options.makeTool,
+    };
+  } else {
+    config = {
+      name: options.name,
+      template: options.template!,
+      type: options.type!,
+      debugLevel: options.debugLevel || 'release',
+      makeTool: options.makeTool,
+    };
+  }
+
+  // 验证配置
+  const validation = ConfigManager.validate(projectSchema, config);
+  if (!validation.valid) {
+    console.error(chalk.red('\n✗ 配置验证失败:'));
+    validation.errors?.forEach(err => console.error(chalk.yellow(`  - ${err}`)));
+    process.exit(1);
+  }
+
+  // 显示配置摘要
+  console.log(chalk.bold('\n📋 配置摘要:'));
+  console.log(chalk.dim(`  Workspace 路径: ${workspacePath}`));
+  console.log(chalk.dim(`  项目名称: ${config.name}`));
+  if (options.mode === 'import') {
+    console.log(chalk.dim(`  模式: 导入已有 Git 工程`));
+    console.log(chalk.dim(`  Git 仓库: ${config.source}`));
+    console.log(chalk.dim(`  Git 分支: ${config.branch}`));
+  } else {
+    console.log(chalk.dim(`  模式: 新建工程`));
+    console.log(chalk.dim(`  项目模板: ${config.template}`));
+    console.log(chalk.dim(`  构建类型: ${config.type}`));
+    console.log(chalk.dim(`  调试级别: ${config.debugLevel}`));
+  }
+  console.log(chalk.dim(`  构建工具: ${config.makeTool}`));
+
+  if (!skipConfirm) {
+    const { confirm } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'confirm',
+        message: '确认创建?',
+        default: true
+      }
+    ]);
+
+    if (!confirm) {
+      console.log(chalk.yellow('\n已取消'));
+      return;
+    }
+  }
+
+  console.log(chalk.cyan('\n开始创建项目...\n'));
+
+  const progressReporter = createCliProgressReporter();
+  const rlWrapper = new RlWrapper(progressReporter);
+
+  const result = await rlWrapper.createProject({
+    name: config.name,
+    template: config.template,
+    type: config.type,
+    source: config.source,
+    branch: config.branch,
+    debugLevel: config.debugLevel,
+    makeTool: config.makeTool,
+    cwd: workspacePath
+  } as any);
+
+  if (result.success) {
+    console.log(chalk.bold.green('\n✓ 项目创建成功!\n'));
+  } else {
+    console.error(chalk.red(`\n✗ 创建失败: ${result.error}\n`));
+    if (result.fixSuggestion) {
+      console.error(chalk.cyan(`建议: ${result.fixSuggestion}\n`));
+    }
+    process.exit(1);
+  }
+
+  progressReporter.removeAllListeners();
+}
 
 export async function runProjectWizard(): Promise<void> {
   console.log(chalk.bold.cyan('\n📦 项目创建向导\n'));
