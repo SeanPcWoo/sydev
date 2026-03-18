@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
-import Client from 'ftp';
+import type Client from 'ftp';
 import type { ScannedProject } from './workspace-scanner.js';
 import type { DeviceConfig } from './schemas/device-schema.js';
 
@@ -151,9 +151,9 @@ export class UploadRunner extends EventEmitter {
   }
 
   /** 上传文件到 FTP 服务器 */
-  private putFile(client: Client, localPath: string, remotePath: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      client.put(localPath, remotePath, (err) => {
+  private putFile(client: any, localPath: string, remotePath: string): Promise<void> {
+    return new Promise((resolve, reject: (err: Error) => void) => {
+      client.put(localPath, remotePath, (err: Error | null) => {
         if (err) reject(err);
         else resolve();
       });
@@ -161,8 +161,8 @@ export class UploadRunner extends EventEmitter {
   }
 
   /** 确保远端目录存在，必要时创建 */
-  private ensureRemoteDir(client: Client, remotePath: string): Promise<void> {
-    return new Promise((resolve, reject) => {
+  private ensureRemoteDir(client: any, remotePath: string): Promise<void> {
+    return new Promise((resolve, reject: (err: Error) => void) => {
       const dir = remotePath.substring(0, remotePath.lastIndexOf('/'));
       if (!dir) {
         resolve();
@@ -170,10 +170,10 @@ export class UploadRunner extends EventEmitter {
       }
 
       // 尝试进入目录，如果失败则创建
-      client.cwd(dir, (err) => {
+      client.cwd(dir, (err: Error | null) => {
         if (err) {
           // 目录不存在，创建它
-          client.mkdir(dir, true, (mkErr) => {
+          client.mkdir(dir, true, (mkErr: Error | null) => {
             if (mkErr) reject(mkErr);
             else resolve();
           });
@@ -265,7 +265,7 @@ export class UploadRunner extends EventEmitter {
       }
 
       // 连接 FTP 并上传
-      const client = new Client();
+      const client: any = new (await import('ftp')).default();
 
       return await new Promise((resolve) => {
         const handleError = (err: Error) => {

@@ -6,6 +6,7 @@ import { UploadRunner } from '@sydev/core/upload-runner.js';
 import { WorkspaceScanner } from '@sydev/core/workspace-scanner.js';
 import { deviceSchema, type DeviceConfig } from '@sydev/core/schemas/device-schema.js';
 import type { UploadProgressEvent, UploadProjectResult } from '@sydev/core/upload-runner.js';
+import type { ScannedProject } from '@sydev/core/workspace-scanner.js';
 
 function formatDuration(ms: number): string {
   return `${(ms / 1000).toFixed(1)}s`;
@@ -39,7 +40,7 @@ function loadDevices(workspaceRoot: string): Map<string, DeviceConfig> {
 }
 
 /** 获取所有工程（包含 base，如果存在） */
-function getProjectsWithBase(projects: typeof projects, workspaceRoot: string) {
+function getProjectsWithBase(projects: ScannedProject[], workspaceRoot: string): ScannedProject[] {
   const allProjects = [...projects];
 
   // 检查 base 工程
