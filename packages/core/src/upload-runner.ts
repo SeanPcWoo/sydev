@@ -103,8 +103,30 @@ export class UploadRunner extends EventEmitter {
     }
   }
 
-  /** 替换路径中的 $(WORKSPACE_projectname) 变量，处理 base 路径 */
-  private replaceMacros(path: string, workspaceVars: Map<string, string>): string {
+  /** 从 config.mk 读取 DEBUG_LEVEL 并转换为 Release/Debug */
+  private getOutputDir(projectPath: string): string {
+    try {
+      const configMkPath = join(projectPath, 'config.mk');
+      if (!existsSync(configMkPath)) {
+        return 'Release'; // 默认值
+      }
+      const content = readFileSync(configMkPath, 'utf-8');
+      const match = content.match(/^DEBUG_LEVEL\s*[?:]?=\s*(.+)$/m);
+      if (match) {
+        const debugLevel = match[1].trim().toLowerCase();
+        // 转换为首字母大写
+        if (debugLevel === 'debug') {
+          return 'Debug';
+        }
+      }
+    } catch {
+      // 读取失败，返回默认值
+    }
+    return 'Release';
+  }
+
+  /** 替换路径中的 $(WORKSPACE_projectname) 变量，处理 base 路径和 $(Output) */
+  private replaceMacros(path: string, workspaceVars: Map<string, string>, projectPath?: string): string {
     let result = path;
 
     // 首先检查是否包含 libsylixos（base 项目的标志）
@@ -117,6 +139,12 @@ export class UploadRunner extends EventEmitter {
         const pattern = new RegExp(`\\$\\(${macro}\\)`, 'g');
         result = result.replace(pattern, value);
       }
+    }
+
+    // 处理 $(Output) 变量
+    if (result.includes('$(Output)') && projectPath) {
+      const outputDir = this.getOutputDir(projectPath);
+      result = result.replace(/\$\(Output\)/g, outputDir);
     }
 
     return result;
@@ -209,8 +237,8 @@ export class UploadRunner extends EventEmitter {
       // 替换路径宏
       const uploadPaths = reprojConfig.uploadPaths ?? [];
       const resolvedPaths = uploadPaths.map((path) => ({
-        localPath: this.replaceMacros(path.localPath, workspaceVars),
-        remotePath: this.replaceMacros(path.remotePath, workspaceVars),
+        localPath: this.replaceMacros(path.localPath, workspaceVars, project.path),
+        remotePath: this.replaceMacros(path.remotePath, workspaceVars, project.path),
       }));
 
       if (resolvedPaths.length === 0) {
