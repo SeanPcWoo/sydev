@@ -1,80 +1,11 @@
-// 环境检查
-export {
-  checkRlCommand,
-  checkToolchain,
-  checkEnvironment
-} from './env-checker.js';
+/**
+ * @sydev/core — sydev 项目的内部核心库
+ *
+ * ⚠️ 注意：这个库只为 sydev CLI 内部使用。
+ * 不提供公开 API，不建议在外部项目中使用。
+ *
+ * SKILL 开发者应该基于 sydev 命令行接口开发，而不是调用这里的 API。
+ */
 
-// 配置管理
-export { ConfigManager } from './config-manager.js';
-export {
-  workspaceSchema,
-  projectSchema,
-  deviceSchema,
-  type WorkspaceConfig,
-  type ProjectConfig,
-  type DeviceConfig,
-  templateTypeSchema,
-  templateMetaSchema,
-  templateIndexSchema,
-  templateContentSchema,
-  fullConfigSchema,
-  type FullConfig,
-} from './schemas/index.js';
-
-// 模板管理
-export {
-  TemplateManager,
-  type TemplateMeta,
-  type TemplateType,
-  type TemplateIndex,
-} from './template-manager.js';
-
-// rl 命令包装
-export {
-  RlWrapper,
-  executeRlCommand,
-  type RlCommandResult,
-  type WorkspaceInitOptions,
-  type ProjectCreateOptions,
-  type DeviceAddOptions
-} from './rl-wrapper.js';
-
-// 进度报告
-export {
-  ProgressReporter,
-  type StepProgress,
-  type ErrorEvent
-} from './progress-reporter.js';
-
-// 初始化编排
-export { InitOrchestrator, type InitResult, type InitOptions, type StepError } from './init-orchestrator.js';
-
-// 状态读取
-export { ConfigReader, type WorkspaceStatus } from './config-reader.js';
-
-// 批量执行
-export { BatchExecutor, type BatchItemStatus, type BatchResult } from './batch-executor.js';
-
-// 常量
-export { PLATFORMS } from './constants.js';
-
-// 类型定义
-export type {
-  RlVersion,
-  EnvCheckResult,
-  ToolchainCheckResult,
-  EnvironmentStatus
-} from './types.js';
-
-// 工程扫描
-export { WorkspaceScanner, type ScannedProject } from './workspace-scanner.js';
-
-// 编译执行
-export {
-  BuildRunner,
-  type BuildOptions,
-  type BuildProjectResult,
-  type BuildResult,
-  type BuildProgressEvent,
-} from './build-runner.js';
+// 这是一个内部库，不导出任何内容
+export {};

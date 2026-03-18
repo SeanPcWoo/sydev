@@ -1,7 +1,8 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
-import { WorkspaceScanner, BuildRunner } from '@sydev/core';
-import type { BuildProgressEvent, BuildProjectResult } from '@sydev/core';
+import { BuildRunner } from '@sydev/core/build-runner.js';
+import { WorkspaceScanner } from '@sydev/core/workspace-scanner.js';
+import type { BuildProgressEvent, BuildProjectResult } from '@sydev/core/build-runner.js';
 
 function parseExtraArgs(): string[] {
   const dashDashIdx = process.argv.indexOf('--');

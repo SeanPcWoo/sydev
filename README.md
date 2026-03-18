@@ -4,8 +4,6 @@
 
 快速部署和管理 SylixOS 开发环境、编译工程、清理构建产物的命令行工具。
 
-> **💡 开发者提示**: 如果你需要学习 sydev 的架构、开发 SKILL 或深入理解命令实现，请查看 [`docs/INDEX.md`](docs/INDEX.md) — 完整的开发文档索引。
-
 ## 安装
 
 ```bash
@@ -859,92 +857,6 @@ sydev build libcpu -- -j8
 |------|------|
 | `-v, --version` | 显示版本信息 |
 | `-h, --help` | 显示帮助信息 |
-
----
-
-## 架构说明
-
-### 项目结构
-
-```
-workspace/
-├── .realevo/              # RealEvo 配置目录
-├── .sydev/
-│   └── Makefile           # 自动生成的构建脚本
-├── base/                  # SylixOS Base 工程
-├── libcpu/                # 项目 1
-│   ├── .project           # 标记文件
-│   └── Makefile           # 项目构建配置
-├── my-app/                # 项目 2
-│   ├── .project
-│   └── Makefile
-└── ...
-```
-
-### Makefile 生成
-
-`sydev build init` 会自动生成 `.sydev/Makefile`，每个项目一个 target：
-
-```makefile
-.PHONY: libcpu my-app clean rebuild
-
-libcpu:
-	cd libcpu && make
-
-my-app:
-	cd my-app && make
-
-clean:
-	cd libcpu && make clean
-	cd my-app && make clean
-
-rebuild: clean
-	cd libcpu && make
-	cd my-app && make
-```
-
-也可直接使用：
-```bash
-make -f .sydev/Makefile libcpu
-make -f .sydev/Makefile clean
-```
-
----
-
-## 配置文件存储
-
-- **模板**：`~/.sydev/` （用户主目录）
-- **Workspace 配置**：`.realevo/config.json` （workspace 目录）
-- **项目配置**：各项目的 `.project` 文件
-
----
-
-## 常见问题
-
-### Q: 我可以在 workspace 外运行 build/clean 命令吗？
-
-A: 可以。build/clean/rebuild 不需要 RealEvo-Stream，可在任何包含 workspace 项目的目录运行。
-
-### Q: 如何并行编译？
-
-A: 使用 `--` 传递 make 参数：
-```bash
-sydev build libcpu -- -j8
-```
-
-### Q: 如何导出配置供其他机器使用？
-
-A: 使用 template 功能：
-```bash
-sydev template save           # 保存为模板
-sydev template export -o env.json  # 导出为 JSON
-# 在其他机器上
-sydev init --config env.json  # 一键初始化
-```
-
-### Q: 模板存放在哪里？
-
-A: 所有模板存放在用户主目录的 `~/.sydev/` 下，全局可用。
 
 ---
 

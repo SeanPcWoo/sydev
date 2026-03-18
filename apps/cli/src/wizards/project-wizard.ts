@@ -1,11 +1,8 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
-import {
-  ConfigManager,
-  projectSchema,
-  RlWrapper,
-  type ProjectConfig
-} from '@sydev/core';
+import { ConfigManager } from '@sydev/core/config-manager.js';
+import { projectSchema, type ProjectConfig } from '@sydev/core/schemas/project-schema.js';
+import { RlWrapper } from '@sydev/core/rl-wrapper.js';
 import { createCliProgressReporter } from '../utils/cli-progress.js';
 import { getRemoteDefaultBranch, remoteBranchExists } from '../utils/git.js';
 import type { ProjectOptions } from '../options/project-parser.js';

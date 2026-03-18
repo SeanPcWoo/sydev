@@ -1,12 +1,9 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
-import {
-  ConfigManager,
-  deviceSchema,
-  RlWrapper,
-  PLATFORMS,
-  type DeviceConfig
-} from '@sydev/core';
+import { ConfigManager } from '@sydev/core/config-manager.js';
+import { deviceSchema, type DeviceConfig } from '@sydev/core/schemas/device-schema.js';
+import { RlWrapper } from '@sydev/core/rl-wrapper.js';
+import { PLATFORMS } from '@sydev/core/constants.js';
 import { createCliProgressReporter } from '../utils/cli-progress.js';
 import type { DeviceOptions } from '../options/device-parser.js';
 

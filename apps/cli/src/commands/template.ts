@@ -23,15 +23,13 @@ function padEndW(s: string, width: number): string {
   return diff > 0 ? s + ' '.repeat(diff) : s;
 }
 
-import {
-  TemplateManager,
-  ConfigManager,
-  RlWrapper,
-  InitOrchestrator,
-  fullConfigSchema,
-  type TemplateType,
-  type FullConfig,
-} from '@sydev/core';
+import { TemplateManager } from '@sydev/core/template-manager.js';
+import { ConfigManager } from '@sydev/core/config-manager.js';
+import { RlWrapper } from '@sydev/core/rl-wrapper.js';
+import { InitOrchestrator } from '@sydev/core/init-orchestrator.js';
+import { fullConfigSchema } from '@sydev/core/schemas/index.js';
+import type { TemplateType } from '@sydev/core/template-manager.js';
+import type { FullConfig } from '@sydev/core/schemas/index.js';
 import { createCliProgressReporter } from '../utils/cli-progress.js';
 
 const TEMPLATE_TYPES: { name: string; value: TemplateType }[] = [

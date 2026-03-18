@@ -2,12 +2,10 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import { readFileSync } from 'fs';
-import {
-  ConfigManager,
-  InitOrchestrator,
-  RlWrapper,
-  fullConfigSchema,
-} from '@sydev/core';
+import { ConfigManager } from '@sydev/core/config-manager.js';
+import { InitOrchestrator } from '@sydev/core/init-orchestrator.js';
+import { RlWrapper } from '@sydev/core/rl-wrapper.js';
+import { fullConfigSchema } from '@sydev/core/schemas/index.js';
 import { createCliProgressReporter } from '../utils/cli-progress.js';
 
 export const initCommand = new Command('init')

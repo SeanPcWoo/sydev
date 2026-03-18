@@ -3,7 +3,7 @@ import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import chalk from 'chalk';
-import { checkEnvironment } from '@sydev/core';
+import { checkEnvironment } from '@sydev/core/env-checker.js';
 import { workspaceCommand } from './commands/workspace.js';
 import { projectCommand } from './commands/project.js';
 import { buildCommand } from './commands/build.js';

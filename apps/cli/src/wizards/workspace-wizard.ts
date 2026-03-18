@@ -3,13 +3,10 @@ import chalk from 'chalk';
 import { join } from 'path';
 import { rmSync, existsSync } from 'fs';
 import { execSync } from 'child_process';
-import {
-  ConfigManager,
-  workspaceSchema,
-  RlWrapper,
-  PLATFORMS,
-  type WorkspaceConfig
-} from '@sydev/core';
+import { ConfigManager } from '@sydev/core/config-manager.js';
+import { RlWrapper } from '@sydev/core/rl-wrapper.js';
+import { PLATFORMS } from '@sydev/core/constants.js';
+import { workspaceSchema, type WorkspaceConfig } from '@sydev/core/schemas/workspace-schema.js';
 import { createCliProgressReporter } from '../utils/cli-progress.js';
 import { getRemoteDefaultBranch } from '../utils/git.js';
 

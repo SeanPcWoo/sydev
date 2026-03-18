@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
-import { checkEnvironment } from '@sydev/core';
+import { checkEnvironment } from '@sydev/core/env-checker.js';
 import { WorkspaceOptionParser, generateHelpExample } from '../options/index.js';
 
 const helpExamples = {

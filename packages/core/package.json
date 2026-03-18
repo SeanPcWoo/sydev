@@ -5,7 +5,20 @@
   "type": "module",
   "main": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./env-checker.js": "./src/env-checker.ts",
+    "./progress-reporter.js": "./src/progress-reporter.ts",
+    "./build-runner.js": "./src/build-runner.ts",
+    "./workspace-scanner.js": "./src/workspace-scanner.ts",
+    "./config-manager.js": "./src/config-manager.ts",
+    "./template-manager.js": "./src/template-manager.ts",
+    "./init-orchestrator.js": "./src/init-orchestrator.ts",
+    "./rl-wrapper.js": "./src/rl-wrapper.ts",
+    "./constants.js": "./src/constants.ts",
+    "./schemas/index.js": "./src/schemas/index.ts",
+    "./schemas/workspace-schema.js": "./src/schemas/workspace-schema.ts",
+    "./schemas/project-schema.js": "./src/schemas/project-schema.ts",
+    "./schemas/device-schema.js": "./src/schemas/device-schema.ts"
   },
   "scripts": {
     "test": "vitest",
