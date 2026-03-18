@@ -31,12 +31,11 @@
 
 ### 开发者文档
 
-- **[API 参考](./API_REFERENCE.md)** 🔧
-  - UploadRunner API
-  - BuildRunner API
-  - WorkspaceScanner API
-  - 类型定义
-  - IDE Skill 集成示例
+- **[Skill 集成指南](./SKILL_INTEGRATION.md)** 🔧
+  - 通过 CLI 接口集成 sydev
+  - 常见集成场景和代码示例
+  - 配置文件解析方式
+  - 最佳实践
 
 ---
 
@@ -49,7 +48,7 @@
 | 快速了解常用命令 | [快速参考卡片](./QUICK_REFERENCE.md) |
 | 初始化新工作空间 | [命令参考 → Workspace](./COMMANDS.md#workspace-管理工作空间) |
 | 配置上传到设备 | [Upload 指南](./UPLOAD_GUIDE.md) |
-| 编写 IDE Skill | [API 参考](./API_REFERENCE.md) |
+| 编写 IDE Skill | [Skill 集成指南](./SKILL_INTEGRATION.md) |
 | 排查问题 | [快速参考卡片 → 故障排查](./QUICK_REFERENCE.md#故障排查速查) 或 [Upload 指南 → 故障排除](./UPLOAD_GUIDE.md#故障排除) |
 | 完整学习所有命令 | [完整命令参考](./COMMANDS.md) |
 
@@ -118,7 +117,7 @@ docs/
 ├── QUICK_REFERENCE.md         # 速查表 ⚡
 ├── COMMANDS.md                # 完整命令参考 📖
 ├── UPLOAD_GUIDE.md            # 上传详细指南 📤
-└── API_REFERENCE.md           # API 参考 🔧
+└── SKILL_INTEGRATION.md       # Skill 集成指南 🔧
 ```
 
 ---
@@ -262,5 +261,6 @@ sydev build --help        # 特定命令帮助
 **最后更新**: 2026-03-18
 
 **相关资源**:
-- [GitHub 项目](https://github.com/acoinfo/sydev)
-- [项目 README](../README.md)
+- [完整命令参考](./COMMANDS.md)
+- [Upload 使用指南](./UPLOAD_GUIDE.md)
+- [Skill 集成指南](./SKILL_INTEGRATION.md)
