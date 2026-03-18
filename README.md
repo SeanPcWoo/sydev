@@ -337,12 +337,12 @@ sydev device list
 
 配置保存在用户主目录 `~/.sydev/` 下，全局可用。
 
-### template save
+### template create
 
-将当前配置保存为模板，交互式收集模板名称、描述和类型。
+交互式创建配置模板并保存到全局模板库，收集模板名称、描述和类型。
 
 ```bash
-sydev template save
+sydev template create
 ```
 
 **模板类型**：
@@ -453,11 +453,12 @@ sydev template delete <模板ID>
 
 ### template export
 
-导出配置为 JSON 文件，便于备份或分享。
+从当前 workspace 自动扫描配置并导出为 JSON 文件，便于备份或分享。
 
 ```bash
 sydev template export
 sydev template export -o my-config.json
+sydev template export -d /path/to/workspace
 ```
 
 **选项**：
@@ -465,11 +466,15 @@ sydev template export -o my-config.json
 | 选项 | 说明 | 默认值 |
 |------|------|--------|
 | `-o, --output <file>` | 输出文件路径 | `sydev-config.json` |
+| `-d, --dir <path>` | Workspace 路径 | 当前目录 |
 
 **导出流程**：
-1. 选择要导出的���型（workspace / project / device / full）
-2. 交互式收集配置
-3. 保存为 JSON 文件
+1. 自动读取 workspace 配置（支持 `workspace.json` 和 RealEvo-Stream `config.json`）
+2. 自动扫描项目目录，提取 git 远程地址和分支
+3. 自动加载已配置的设备列表
+4. 展示检测到的配置，用户确认
+5. 可选调整 workspace 参数（createbase/build/debugLevel）
+6. 导出为 JSON 文件，可选同时保存为全局模板
 
 **JSON 示例**：
 ```json
@@ -843,11 +848,14 @@ sydev device add
 sydev build libcpu
 ```
 
-### 2. 保存为模板复用
+### 2. 创建模板复用
 
 ```bash
-# 保存当前配置为完整模板
-sydev template save
+# 交互式创建完整模板
+sydev template create
+
+# 或从已有 workspace 导出为模板
+sydev template export
 
 # 在其他机器上应用模板
 sydev template apply my-template
@@ -856,7 +864,7 @@ sydev template apply my-template
 ### 3. 配置文件批量部署
 
 ```bash
-# 导出当前配置为 JSON
+# 从当前 workspace 导出配置为 JSON
 sydev template export -o env.json
 
 # 在其他机器上一键初始化

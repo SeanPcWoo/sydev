@@ -3,6 +3,8 @@ import chalk from 'chalk';
 import { ConfigManager } from '@sydev/core/config-manager.js';
 import { projectSchema, type ProjectConfig } from '@sydev/core/schemas/project-schema.js';
 import { RlWrapper } from '@sydev/core/rl-wrapper.js';
+import { BuildRunner } from '@sydev/core/build-runner.js';
+import { WorkspaceScanner } from '@sydev/core/workspace-scanner.js';
 import { createCliProgressReporter } from '../utils/cli-progress.js';
 import { getRemoteDefaultBranch, remoteBranchExists } from '../utils/git.js';
 import type { ProjectOptions } from '../options/project-parser.js';
@@ -94,6 +96,15 @@ export async function runProjectInit(
 
   if (result.success) {
     console.log(chalk.bold.green('\n✓ 项目创建成功!\n'));
+    // 更新 Makefile 并同步新工程的 config.mk
+    const scanner = new WorkspaceScanner(workspacePath);
+    const projects = scanner.scan();
+    const runner = new BuildRunner(projects, workspacePath);
+    runner.ensureMakefile();
+    const newProject = projects.find(p => p.name === options.name);
+    if (newProject) {
+      runner.patchConfigMkFor(newProject);
+    }
   } else {
     console.error(chalk.red(`\n✗ 创建失败: ${result.error}\n`));
     if (result.fixSuggestion) {
@@ -348,6 +359,15 @@ export async function runProjectWizard(): Promise<void> {
 
   if (result.success) {
     console.log(chalk.bold.green('\n✓ 项目创建成功!\n'));
+    // 更新 Makefile 并同步新工程的 config.mk
+    const scanner = new WorkspaceScanner(phase1.cwd);
+    const projects = scanner.scan();
+    const runner = new BuildRunner(projects, phase1.cwd);
+    runner.ensureMakefile();
+    const newProject = projects.find(p => p.name === config.name);
+    if (newProject) {
+      runner.patchConfigMkFor(newProject);
+    }
   } else {
     console.error(chalk.red(`\n✗ 创建失败: ${result.error}\n`));
     if (result.fixSuggestion) {

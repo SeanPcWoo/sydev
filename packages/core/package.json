@@ -11,6 +11,7 @@
     "./build-runner.js": "./src/build-runner.ts",
     "./upload-runner.js": "./src/upload-runner.ts",
     "./workspace-scanner.js": "./src/workspace-scanner.ts",
+    "./config-reader.js": "./src/config-reader.ts",
     "./config-manager.js": "./src/config-manager.ts",
     "./template-manager.js": "./src/template-manager.ts",
     "./init-orchestrator.js": "./src/init-orchestrator.ts",

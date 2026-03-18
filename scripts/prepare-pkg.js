@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync, copyFileSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { execSync } from 'child_process';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '..');
@@ -33,6 +34,11 @@ if (existsSync(readme)) {
   copyFileSync(readme, resolve(distPkg, 'README.md'));
   console.log('✓ README.md 已复制');
 }
+
+// 安装依赖（tsup clean 会清空 node_modules）
+console.log('⏳ 安装依赖...');
+execSync('npm install --production', { cwd: distPkg, stdio: 'inherit' });
+console.log('✓ 依赖已安装');
 
 console.log('\n构建完成！可以通过以下方式测试：');
 console.log('  cd dist-pkg && npm link');

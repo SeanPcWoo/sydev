@@ -29,6 +29,21 @@ sydev project create
 
 # 添加设备
 sydev device add
+
+# 编译工程（交互式选择）
+sydev build
+
+# 编译指定工程
+sydev build libcpu
+
+# 编译模板（__ 开头的自定义编译组合）
+sydev build __all-no-kernel
+
+# 生成/增量更新 .sydev/Makefile
+sydev build init
+
+# 从头重新生成 Makefile（覆盖用户修改）
+sydev build init --default
 ```
 
 ### 命令自动补全

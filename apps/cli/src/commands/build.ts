@@ -32,6 +32,7 @@ export const buildCommand = new Command('build')
   $ sydev build                  # \u4ea4\u4e92\u5f0f\u9009\u62e9\u5de5\u7a0b\u6216\u6a21\u677f
   $ sydev build libcpu           # \u7f16\u8bd1\u6307\u5b9a\u5de5\u7a0b
   $ sydev build init             # \u751f\u6210/\u66f4\u65b0 .sydev/Makefile
+  $ sydev build init --default   # \u4ece\u5934\u91cd\u65b0\u751f\u6210 Makefile
   $ sydev build libcpu -- -j4   # \u900f\u4f20 make \u53c2\u6570
 `)
   .action(async (projectArg: string | undefined, opts: { quiet?: boolean }) => {
@@ -41,20 +42,28 @@ export const buildCommand = new Command('build')
 
     // \u6709\u5de5\u7a0b\u540d\u53c2\u6570\uff1a\u5355\u5de5\u7a0b\u7f16\u8bd1
     if (projectArg) {
-      const found = projects.find((p) => p.name === projectArg);
-      if (!found) {
-        console.error(chalk.red(`\u672a\u627e\u5230\u5de5\u7a0b '${projectArg}'\uff0c\u8fd0\u884c sydev build \u67e5\u770b\u53ef\u7528\u5de5\u7a0b\u5217\u8868`));
-        process.exit(1);
-      }
       const runner = new BuildRunner(projects, process.cwd());
       runner.ensureMakefile();
       runner.on('progress', (event: BuildProgressEvent) => {
         if (event.type === 'stdout-line') process.stdout.write(event.line + '\n');
         else if (event.type === 'warning') console.log(chalk.yellow('\u26a0 ' + event.message));
       });
-      const result = await runner.buildOne(found, { quiet: opts.quiet, extraArgs });
+
+      // 先找工程，找不到再找模板
+      const found = projects.find((p) => p.name === projectArg);
+      const templates = runner.parseUserTemplates();
+      const isTemplate = !found && templates.includes(projectArg);
+
+      if (!found && !isTemplate) {
+        console.error(chalk.red(`\u672a\u627e\u5230\u5de5\u7a0b\u6216\u6a21\u677f '${projectArg}'\uff0c\u8fd0\u884c sydev build \u67e5\u770b\u53ef\u7528\u5217\u8868`));
+        process.exit(1);
+      }
+
+      const target = found ?? { name: projectArg, path: process.cwd() };
+      const label = isTemplate ? '\u6a21\u677f' : '\u7f16\u8bd1';
+      const result = await runner.buildOne(target, { quiet: opts.quiet, extraArgs });
       if (result.success) {
-        console.log(chalk.green('\u2713 \u7f16\u8bd1\u6210\u529f') + chalk.dim(` (${formatDuration(result.durationMs)})`));
+        console.log(chalk.green(`\u2713 ${label}\u6210\u529f`) + chalk.dim(` (${formatDuration(result.durationMs)})`));
         process.exit(0);
       } else {
         if (opts.quiet) {
@@ -125,7 +134,8 @@ export const buildCommand = new Command('build')
 buildCommand
   .command('init')
   .description('\u751f\u6210/\u66f4\u65b0 .sydev/Makefile\uff08\u8131\u79bb sydev \u53ef\u76f4\u63a5 make \u7f16\u8bd1\uff09')
-  .action(async () => {
+  .option('--default', '\u4ece\u5934\u91cd\u65b0\u751f\u6210 Makefile\uff08\u8986\u76d6\u7528\u6237\u4fee\u6539\uff09')
+  .action(async (opts: { default?: boolean }) => {
     const scanner = new WorkspaceScanner(process.cwd());
     const projects = scanner.scan();
     if (projects.length === 0) {
@@ -133,7 +143,7 @@ buildCommand
       process.exit(1);
     }
     const runner = new BuildRunner(projects, process.cwd());
-    runner.ensureMakefile();
+    runner.ensureMakefile(opts.default);
     console.log(chalk.green('\u2713 Makefile \u5df2\u751f\u6210: .sydev/Makefile'));
     console.log(chalk.dim(`  \u5305\u542b ${projects.length} \u4e2a\u5de5\u7a0b target\uff0c\u53ef\u76f4\u63a5\u8fd0\u884c make -f .sydev/Makefile <\u5de5\u7a0b\u540d> \u7f16\u8bd1`));
   });

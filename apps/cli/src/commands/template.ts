@@ -1,7 +1,8 @@
 import { Command } from 'commander';
 import inquirer from 'inquirer';
 import chalk from 'chalk';
-import { readFileSync, writeFileSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { execSync } from 'child_process';
 import { homedir } from 'os';
 import { join } from 'path';
 import { getRemoteDefaultBranch, remoteBranchExists } from '../utils/git.js';
@@ -36,12 +37,15 @@ function padEndW(s: string, width: number): string {
 
 import { TemplateManager } from '@sydev/core/template-manager.js';
 import { ConfigManager } from '@sydev/core/config-manager.js';
+import { ConfigReader } from '@sydev/core/config-reader.js';
+import { WorkspaceScanner } from '@sydev/core/workspace-scanner.js';
 import { RlWrapper } from '@sydev/core/rl-wrapper.js';
 import { InitOrchestrator } from '@sydev/core/init-orchestrator.js';
 import { fullConfigSchema } from '@sydev/core/schemas/index.js';
 import type { TemplateType } from '@sydev/core/template-manager.js';
 import type { FullConfig } from '@sydev/core/schemas/index.js';
 import { createCliProgressReporter } from '../utils/cli-progress.js';
+import { loadDevices } from '../helpers/device-loader.js';
 
 const TEMPLATE_TYPES: { name: string; value: TemplateType }[] = [
   { name: 'workspace - 环境模板', value: 'workspace' },
@@ -59,19 +63,19 @@ export const templateCommand = new Command('template')
   .description('管理配置模板')
   .addHelpText('after', `
 示例:
-  $ sydev template save       # 保存当前配置为模板
+  $ sydev template create     # 创建配置模板
   $ sydev template list       # 查看所有模板
   $ sydev template show <id>  # 查看模板详细配置
   $ sydev template apply <id> # 从模板初始化环境
   $ sydev template delete <id># 删除模板
-  $ sydev template export     # 导出配置为 JSON 文件
+  $ sydev template export     # 从当前 workspace 导出配置
   $ sydev template import <f> # 从 JSON 文件导入配置
 `);
 
-// --- template save ---
+// --- template create ---
 templateCommand
-  .command('save')
-  .description('保存当前配置为模板')
+  .command('create')
+  .description('创建配置模板并保存到全局模板库')
   .action(async () => {
     const tm = new TemplateManager(getGlobalTemplateDir());
 
@@ -103,9 +107,9 @@ templateCommand
 
     try {
       const meta = tm.save(base.name, base.description, base.type, content);
-      console.log(chalk.green(`\n✓ 模板已保存: ${meta.id} (${meta.type})`));
+      console.log(chalk.green(`\n✓ 模板已创建: ${meta.id} (${meta.type})`));
     } catch (err: any) {
-      console.error(chalk.red(`\n✗ 保存失败: ${err.message}`));
+      console.error(chalk.red(`\n✗ 创建失败: ${err.message}`));
     }
   });
 
@@ -119,7 +123,7 @@ templateCommand
     const templates = tm.list(opts.type);
 
     if (templates.length === 0) {
-      console.log(chalk.dim('  暂无模板，运行 sydev template save 创建'));
+      console.log(chalk.dim('  暂无模板，运行 sydev template create 创建'));
       return;
     }
 
@@ -344,25 +348,180 @@ templateCommand
 // --- template export ---
 templateCommand
   .command('export')
-  .description('导出配置为 JSON 文件')
+  .description('从当前 workspace 导出完整配置为 JSON 文件')
   .option('-o, --output <file>', '输出文件路径', 'sydev-config.json')
+  .option('-d, --dir <path>', 'Workspace 路径', process.cwd())
   .action(async (opts) => {
-    const { type: templateType } = await inquirer.prompt([
-      { type: 'list', name: 'type', message: '导出类型:', choices: TEMPLATE_TYPES },
+    const wsRoot = opts.dir;
+
+    // 1. 读取 workspace 配置（优先 workspace.json，回退到 config.json）
+    const reader = new ConfigReader(wsRoot);
+    const wsStatus = reader.getWorkspaceStatus();
+
+    let wsConfig: { platform: string[]; version: string; debugLevel: string; os: string; createbase?: boolean; build?: boolean };
+
+    if (wsStatus.configured && wsStatus.config) {
+      wsConfig = wsStatus.config;
+    } else {
+      // 尝试从 RealEvo-Stream 的 config.json 读取
+      const configPath = join(wsRoot, '.realevo', 'config.json');
+      if (!existsSync(configPath)) {
+        console.error(chalk.red('✗ 当前目录不是有效的 sydev workspace'));
+        console.error(chalk.dim('  请在 workspace 根目录下运行，或使用 -d 指定路径'));
+        return;
+      }
+
+      try {
+        const raw = JSON.parse(readFileSync(configPath, 'utf-8'));
+        // 转换 base_type → version: "SylixOS_LTS_3.6.5" → "lts_3.6.5", "SylixOS_ECS_3.6.5" → "ecs_3.6.5"
+        let version = 'default';
+        if (raw.base_type) {
+          const bt = raw.base_type.toLowerCase();
+          if (bt.includes('lts') && bt.includes('compiled')) version = 'lts_3.6.5_compiled';
+          else if (bt.includes('lts')) version = 'lts_3.6.5';
+          else if (bt.includes('ecs')) version = 'ecs_3.6.5';
+          else if (bt.includes('research')) version = 'research';
+        }
+
+        wsConfig = {
+          platform: raw.platforms || ['ARM64_GENERIC'],
+          version,
+          debugLevel: raw.debug_level || 'release',
+          os: raw.linux_source && raw.linux_source !== 'custom' ? 'linux' : 'sylixos',
+        };
+      } catch {
+        console.error(chalk.red('✗ 无法解析 .realevo/config.json'));
+        return;
+      }
+    }
+
+    console.log(chalk.cyan('\n◆ 检测到 Workspace 配置'));
+    console.log(`  平台:     ${wsConfig.platform.join(', ')}`);
+    console.log(`  版本:     ${wsConfig.version}`);
+    console.log(`  调试级别: ${wsConfig.debugLevel}`);
+    console.log(`  操作系统: ${wsConfig.os}`);
+
+    // 2. 扫描项目
+    const scanner = new WorkspaceScanner(wsRoot);
+    const scannedProjects = scanner.scan();
+    const savedProjects = reader.getProjects();
+
+    // 合并：以 savedProjects 的详细信息为主，scannedProjects 补充未记录的项目
+    const savedMap = new Map(savedProjects.map(p => [p.name, p]));
+    const projects: any[] = [];
+
+    for (const sp of scannedProjects) {
+      const saved = savedMap.get(sp.name);
+      if (saved) {
+        projects.push(saved);
+        savedMap.delete(sp.name);
+      } else {
+        // 尝试从 git 获取 source 和 branch
+        const proj: any = { name: sp.name, makeTool: 'make' as const };
+        try {
+          const remote = execSync('git remote get-url origin', { cwd: sp.path, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
+          if (remote) proj.source = remote;
+        } catch {}
+        try {
+          const branch = execSync('git rev-parse --abbrev-ref HEAD', { cwd: sp.path, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
+          if (branch && branch !== 'HEAD') proj.branch = branch;
+        } catch {}
+        projects.push(proj);
+      }
+    }
+
+    if (projects.length > 0) {
+      console.log(chalk.cyan(`\n◆ 检测到 ${projects.length} 个项目`));
+      for (const p of projects) {
+        const info = [
+          p.source && `来源: ${p.source}`,
+          p.template && `模板: ${p.template}`,
+          p.type && `类型: ${p.type}`,
+        ].filter(Boolean).join(', ');
+        console.log(`  ${chalk.green(p.name)}${info ? chalk.dim(` (${info})`) : ''}`);
+      }
+    } else {
+      console.log(chalk.dim('\n  未检测到项目'));
+    }
+
+    // 3. 加载设备
+    const devices = loadDevices(wsRoot);
+
+    if (devices.length > 0) {
+      console.log(chalk.cyan(`\n◆ 检测到 ${devices.length} 个设备`));
+      for (const d of devices) {
+        console.log(`  ${chalk.green(d.name)} - ${d.ip} (${d.platform.join(', ')})`);
+      }
+    } else {
+      console.log(chalk.dim('\n  未检测到设备'));
+    }
+
+    // 4. 用户确认
+    console.log();
+    const { confirmExport } = await inquirer.prompt([
+      { type: 'confirm', name: 'confirmExport', message: '确认导出以上配置?', default: true },
     ]);
 
-    const content = await collectContent(templateType);
-
-    let exportData: any;
-    if (templateType === 'full') {
-      exportData = { schemaVersion: 1, ...content };
-    } else {
-      exportData = { schemaVersion: 1, type: templateType, [templateType]: content };
+    if (!confirmExport) {
+      console.log(chalk.yellow('已取消'));
+      return;
     }
+
+    // 5. 询问是否调整 workspace 参数（createbase/build 在导出时通常不需要）
+    const { adjustWs } = await inquirer.prompt([
+      { type: 'confirm', name: 'adjustWs', message: '是否调整 workspace 导出参数?', default: false },
+    ]);
+
+    let exportWs: any = {
+      platform: wsConfig.platform,
+      version: wsConfig.version,
+      debugLevel: wsConfig.debugLevel,
+      os: wsConfig.os,
+      createbase: wsConfig.createbase ?? true,
+      build: wsConfig.build ?? false,
+    };
+
+    if (adjustWs) {
+      const adjusted = await inquirer.prompt([
+        { type: 'confirm', name: 'createbase', message: '创建新 Base?', default: exportWs.createbase },
+        { type: 'confirm', name: 'build', message: '编译 Base?', default: exportWs.build },
+        { type: 'list', name: 'debugLevel', message: '调试级别:', choices: ['release', 'debug'], default: exportWs.debugLevel },
+      ]);
+      exportWs = { ...exportWs, ...adjusted };
+    }
+
+    // 6. 组装并导出
+    const exportData: any = {
+      schemaVersion: 1,
+      workspace: exportWs,
+      ...(projects.length ? { projects } : {}),
+      ...(devices.length ? { devices: devices.map(d => ({ name: d.name, ip: d.ip, platform: d.platform, username: d.username, ...(d.password ? { password: d.password } : {}), ssh: d.ssh, telnet: d.telnet, ftp: d.ftp, gdb: d.gdb })) } : {}),
+    };
 
     const json = ConfigManager.exportToJson(exportData);
     writeFileSync(opts.output, json, 'utf-8');
     console.log(chalk.green(`\n✓ 配置已导出到 ${opts.output}`));
+
+    // 7. 询问是否同时保存为模板
+    const { saveAsTemplate } = await inquirer.prompt([
+      { type: 'confirm', name: 'saveAsTemplate', message: '是否同时保存为全局模板?', default: false },
+    ]);
+
+    if (saveAsTemplate) {
+      const { name, description } = await inquirer.prompt([
+        { type: 'input', name: 'name', message: '模板名称:', validate: (v: string) => v.trim() ? true : '名称不能为空' },
+        { type: 'input', name: 'description', message: '模板描述:', default: '' },
+      ]);
+
+      const tm = new TemplateManager(getGlobalTemplateDir());
+      try {
+        const templateData = { workspace: exportWs, ...(projects.length ? { projects } : {}), ...(devices.length ? { devices } : {}) };
+        const meta = tm.save(name, description, 'full', templateData);
+        console.log(chalk.green(`✓ 已保存为模板: ${meta.id}`));
+      } catch (err: any) {
+        console.error(chalk.red(`✗ 保存模板失败: ${err.message}`));
+      }
+    }
   });
 
 // --- template import <file> ---
