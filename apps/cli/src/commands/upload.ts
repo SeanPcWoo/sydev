@@ -38,6 +38,30 @@ function loadDevices(workspaceRoot: string): Map<string, DeviceConfig> {
   return devices;
 }
 
+/** 获取所有工程（包含 base，如果存在） */
+function getProjectsWithBase(projects: typeof projects, workspaceRoot: string) {
+  const allProjects = [...projects];
+
+  // 检查 base 工程
+  try {
+    const configPath = join(workspaceRoot, '.realevo', 'config.json');
+    if (existsSync(configPath)) {
+      const content = readFileSync(configPath, 'utf-8');
+      const config = JSON.parse(content);
+      if (config.base && existsSync(join(config.base, '.reproject'))) {
+        const hasBase = allProjects.some(p => p.name === 'base');
+        if (!hasBase) {
+          allProjects.unshift({ name: 'base', path: config.base });
+        }
+      }
+    }
+  } catch {
+    // 静默失败
+  }
+
+  return allProjects;
+}
+
 export const uploadCommand = new Command('upload')
   .description('上传 SylixOS 工程产物到设备')
   .argument('[projects]', '工程名列表（多个工程用逗号或冒号分隔，或单工程名）')
@@ -55,7 +79,9 @@ export const uploadCommand = new Command('upload')
 `)
   .action(async (projectsArg: string | undefined, opts: { device?: string; all?: boolean; quiet?: boolean }) => {
     const scanner = new WorkspaceScanner(process.cwd());
-    const projects = scanner.scan();
+    let projects = scanner.scan();
+    // 添加 base 工程（如果存在）
+    projects = getProjectsWithBase(projects, process.cwd());
     const devices = loadDevices(process.cwd());
 
     if (projects.length === 0) {
@@ -154,6 +180,11 @@ export const uploadCommand = new Command('upload')
 
     // --all 批量上传
     if (opts.all) {
+      if (!opts.device) {
+        console.error(chalk.yellow('上传所有工程时必须指定设备 (--device)'));
+        process.exit(1);
+      }
+
       const runner = new UploadRunner(projects, process.cwd(), devices);
       let failedCount = 0;
 
@@ -167,7 +198,7 @@ export const uploadCommand = new Command('upload')
         console.log(chalk.cyan(`上传 ${project.name}...`));
         const result = await runner.uploadOne(project, { device: opts.device, quiet: opts.quiet });
         if (result.success) {
-          console.log(chalk.green('✓ 上传成功') + chalk.dim(` (${formatDuration(result.durationMs)})`));
+          console.log(chalk.green('��� 上传成功') + chalk.dim(` (${formatDuration(result.durationMs)})`));
         } else {
           console.error(chalk.red(`✗ 上传失败: ${result.message}`));
           failedCount++;

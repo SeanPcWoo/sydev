@@ -45,12 +45,29 @@ interface ReprojectConfig {
 }
 
 export class UploadRunner extends EventEmitter {
+  private basePath: string | undefined;
+
   constructor(
     private projects: ScannedProject[],
     private workspaceRoot: string,
     private devices: Map<string, DeviceConfig>
   ) {
     super();
+    // 读取 base 路径
+    try {
+      const raw = readFileSync(join(workspaceRoot, '.realevo', 'config.json'), 'utf-8');
+      const config = JSON.parse(raw);
+      this.basePath = config.base;
+    } catch {
+      // config.json 不存在或无效
+    }
+    // 自动添加 base 工程（如果存在 .reproject）
+    if (this.basePath && existsSync(join(this.basePath, '.reproject'))) {
+      const hasBase = this.projects.some(p => p.name === 'base');
+      if (!hasBase) {
+        this.projects.unshift({ name: 'base', path: this.basePath });
+      }
+    }
   }
 
   /** 从 .reproject 文件解析上传配置 */
@@ -86,13 +103,22 @@ export class UploadRunner extends EventEmitter {
     }
   }
 
-  /** 替换路径中的 $(WORKSPACE_projectname) 变量 */
+  /** 替换路径中的 $(WORKSPACE_projectname) 变量，处理 base 路径 */
   private replaceMacros(path: string, workspaceVars: Map<string, string>): string {
     let result = path;
-    for (const [macro, value] of workspaceVars) {
-      const pattern = new RegExp(`\\$\\(${macro}\\)`, 'g');
-      result = result.replace(pattern, value);
+
+    // 首先检查是否包含 libsylixos（base 项目的标志）
+    if (result.includes('libsylixos') && this.basePath) {
+      // 对于包含 libsylixos 的路径，用 base 路径替换 $(WORKSPACE_xxx)
+      result = result.replace(/\$\(WORKSPACE_\w+\)/g, this.basePath);
+    } else {
+      // 普通工程路径，使用 workspace 变量替换
+      for (const [macro, value] of workspaceVars) {
+        const pattern = new RegExp(`\\$\\(${macro}\\)`, 'g');
+        result = result.replace(pattern, value);
+      }
     }
+
     return result;
   }
 
@@ -138,6 +164,16 @@ export class UploadRunner extends EventEmitter {
     const startTime = Date.now();
 
     try {
+      // base 工程必须指定设备
+      if (project.name === 'base' && !options?.device) {
+        return {
+          name: project.name,
+          success: false,
+          durationMs: Date.now() - startTime,
+          message: '上传 base 工程必须指定 --device 参数',
+        };
+      }
+
       // 解析 .reproject
       const reprojConfig = this.parseReproject(project.path);
       const deviceName = options?.device || reprojConfig.device;
