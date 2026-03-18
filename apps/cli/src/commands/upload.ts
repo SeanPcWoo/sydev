@@ -40,7 +40,7 @@ function loadDevices(workspaceRoot: string): Map<string, DeviceConfig> {
 
 export const uploadCommand = new Command('upload')
   .description('上传 SylixOS 工程产物到设备')
-  .argument('[project]', '工程名（精确匹配目录名）')
+  .argument('[projects]', '工程名列表（多个工程用逗号或冒号分隔，或单工程名）')
   .option('--device <name>', '指定目标设备（默认从 .reproject 读取）')
   .option('--all', '上传全部工程')
   .option('--quiet', '静默模式')
@@ -48,10 +48,12 @@ export const uploadCommand = new Command('upload')
 示例:
   $ sydev upload                      # 交互式选择工程（支持多选）和设备
   $ sydev upload libcpu               # 上传指定工程
+  $ sydev upload libcpu,libnet        # 上传多个工程（逗号分隔）
+  $ sydev upload libcpu:libnet        # 上传多个工程（冒号分隔）
   $ sydev upload libcpu --device board1   # 上传到指定设备
   $ sydev upload --all                # 上传全部工程
 `)
-  .action(async (projectArg: string | undefined, opts: { device?: string; all?: boolean; quiet?: boolean }) => {
+  .action(async (projectsArg: string | undefined, opts: { device?: string; all?: boolean; quiet?: boolean }) => {
     const scanner = new WorkspaceScanner(process.cwd());
     const projects = scanner.scan();
     const devices = loadDevices(process.cwd());
@@ -66,14 +68,73 @@ export const uploadCommand = new Command('upload')
       process.exit(1);
     }
 
-    // 单工程上传
-    if (projectArg) {
-      const found = projects.find((p) => p.name === projectArg);
-      if (!found) {
-        console.error(chalk.red(`未找到工程 '${projectArg}'，运行 sydev upload 查看可用工程列表`));
+    // 解析多工程参数（逗号或冒号分隔）
+    const parseProjectNames = (arg: string): string[] => {
+      return arg.split(/[,:]+/).map(n => n.trim()).filter(n => n.length > 0);
+    };
+
+    // 从工程名列表查找对应的工程对象
+    const findProjects = (names: string[]): { projects: typeof projects; notFound: string[] } => {
+      const found = [];
+      const notFound = [];
+      for (const name of names) {
+        const project = projects.find(p => p.name === name);
+        if (project) {
+          found.push(project);
+        } else {
+          notFound.push(name);
+        }
+      }
+      return { projects: found, notFound };
+    };
+
+    // 多工程上传处理
+    if (projectsArg) {
+      const projectNames = parseProjectNames(projectsArg);
+      const { projects: selectedProjects, notFound } = findProjects(projectNames);
+
+      if (notFound.length > 0) {
+        console.error(chalk.red(`未找到工程: ${notFound.join(', ')}`));
         process.exit(1);
       }
 
+      if (selectedProjects.length === 0) {
+        console.error(chalk.red('没有有效的工程'));
+        process.exit(1);
+      }
+
+      // 多工程上传（需要指定设备）
+      if (selectedProjects.length > 1) {
+        if (!opts.device) {
+          console.error(chalk.yellow('上传多个工程时必须指定设备 (--device)'));
+          process.exit(1);
+        }
+
+        const runner = new UploadRunner(projects, process.cwd(), devices);
+        let failedCount = 0;
+
+        for (const project of selectedProjects) {
+          console.log(chalk.cyan(`上传 ${project.name}...`));
+          runner.on('progress', (event: UploadProgressEvent) => {
+            if (event.type === 'file-upload' && !opts.quiet) {
+              console.log(chalk.dim(`  上传: ${event.file} → ${event.remotePath}`));
+            }
+          });
+
+          const result = await runner.uploadOne(project, { device: opts.device, quiet: opts.quiet });
+          if (result.success) {
+            console.log(chalk.green('✓ 上传成功') + chalk.dim(` (${formatDuration(result.durationMs)})`));
+          } else {
+            console.error(chalk.red(`✗ 上传失败: ${result.message}`));
+            failedCount++;
+          }
+        }
+
+        process.exit(failedCount);
+      }
+
+      // 单工程上传（与原逻辑相同）
+      const project = selectedProjects[0];
       const runner = new UploadRunner(projects, process.cwd(), devices);
       runner.on('progress', (event: UploadProgressEvent) => {
         if (event.type === 'file-upload' && !opts.quiet) {
@@ -81,7 +142,7 @@ export const uploadCommand = new Command('upload')
         }
       });
 
-      const result = await runner.uploadOne(found, { device: opts.device, quiet: opts.quiet });
+      const result = await runner.uploadOne(project, { device: opts.device, quiet: opts.quiet });
       if (result.success) {
         console.log(chalk.green('✓ 上传成功') + chalk.dim(` (${formatDuration(result.durationMs)})`));
         process.exit(0);
