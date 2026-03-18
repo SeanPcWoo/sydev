@@ -49,6 +49,32 @@ deviceCommand
   .command('list')
   .description('列出所有已配置的设备')
   .action(async () => {
-    console.log(chalk.cyan('查找设备配置...'));
-    console.log(chalk.dim('  设备配置功能将在后续 Plan 实现'));
+    try {
+      const { loadDevices } = await import('../helpers/device-loader.js');
+
+      const devices = loadDevices(process.cwd());
+
+      if (devices.length === 0) {
+        console.log(chalk.yellow('⚠️  未配置任何设备'));
+        console.log(chalk.dim('  使用 "sydev device add" 命令添加设备'));
+        return;
+      }
+
+      console.log(chalk.cyan(`📱 已配置的设备 (共 ${devices.length} 个)\n`));
+
+      devices.forEach((device, index) => {
+        console.log(chalk.green(`  ${index + 1}. ${device.name}`));
+        console.log(chalk.dim(`     IP: ${device.ip}`));
+        console.log(chalk.dim(`     平台: ${Array.isArray(device.platform) ? device.platform.join(', ') : device.platform}`));
+        if (device.username) console.log(chalk.dim(`     用户: ${device.username}`));
+        if (device.ssh) console.log(chalk.dim(`     SSH: ${device.ssh}`));
+        if (device.telnet) console.log(chalk.dim(`     Telnet: ${device.telnet}`));
+        if (device.ftp) console.log(chalk.dim(`     FTP: ${device.ftp}`));
+        if (device.gdb) console.log(chalk.dim(`     GDB: ${device.gdb}`));
+        console.log();
+      });
+    } catch (err: any) {
+      console.error(chalk.red(`✗ 错误: ${err.message}`));
+      process.exit(1);
+    }
   });
