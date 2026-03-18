@@ -17,10 +17,21 @@ function strWidth(s: string): number {
   return w;
 }
 
-/** padEnd that respects CJK display width */
+/** padEnd that respects CJK display width, truncates with ellipsis if too long */
 function padEndW(s: string, width: number): string {
-  const diff = width - strWidth(s);
-  return diff > 0 ? s + ' '.repeat(diff) : s;
+  const w = strWidth(s);
+  if (w >= width) {
+    let truncated = '';
+    let tw = 0;
+    for (const ch of s) {
+      const cw = (ch.codePointAt(0)! >= 0x2E80 && ch.codePointAt(0)! <= 0x9FFF) || (ch.codePointAt(0)! >= 0xF900 && ch.codePointAt(0)! <= 0xFAFF) || (ch.codePointAt(0)! >= 0xFE30 && ch.codePointAt(0)! <= 0xFE4F) || (ch.codePointAt(0)! >= 0xFF00 && ch.codePointAt(0)! <= 0xFF60) || (ch.codePointAt(0)! >= 0x20000 && ch.codePointAt(0)! <= 0x2FA1F) ? 2 : 1;
+      if (tw + cw > width - 2) break;
+      truncated += ch;
+      tw += cw;
+    }
+    return truncated + '…' + ' '.repeat(Math.max(0, width - tw - 1));
+  }
+  return s + ' '.repeat(width - w);
 }
 
 import { TemplateManager } from '@sydev/core/template-manager.js';
@@ -50,6 +61,7 @@ export const templateCommand = new Command('template')
 示例:
   $ sydev template save       # 保存当前配置为模板
   $ sydev template list       # 查看所有模板
+  $ sydev template show <id>  # 查看模板详细配置
   $ sydev template apply <id> # 从模板初始化环境
   $ sydev template delete <id># 删除模板
   $ sydev template export     # 导出配置为 JSON 文件
@@ -122,6 +134,74 @@ templateCommand
     }
     console.log();
   });
+// --- template show <id> ---
+templateCommand
+  .command('show <id>')
+  .description('查看模板详细配置')
+  .action(async (id: string) => {
+    const tm = new TemplateManager(getGlobalTemplateDir());
+
+    let loaded;
+    try {
+      loaded = tm.load(id);
+    } catch (err: any) {
+      console.error(chalk.red(`✗ ${err.message}`));
+      return;
+    }
+
+    const { meta, content } = loaded;
+    const templateContent = content as { type: string; data: any };
+
+    console.log(chalk.bold(`\n模板: ${meta.name}`));
+    console.log(chalk.dim('─'.repeat(50)));
+    console.log(`  ID:       ${chalk.green(meta.id)}`);
+    console.log(`  类型:     ${meta.type}`);
+    if (meta.description) console.log(`  描述:     ${meta.description}`);
+    console.log(`  创建时间: ${chalk.dim(new Date(meta.createdAt).toLocaleString('zh-CN'))}`);
+    console.log(`  更新时间: ${chalk.dim(new Date(meta.updatedAt).toLocaleString('zh-CN'))}`);
+
+    const data = templateContent.data;
+
+    if (data.workspace || templateContent.type === 'workspace') {
+      const ws = data.workspace || data;
+      console.log(chalk.cyan('\n  ◆ Workspace'));
+      if (ws.platform) console.log(`    平台:     ${Array.isArray(ws.platform) ? ws.platform.join(', ') : ws.platform}`);
+      if (ws.version) console.log(`    版本:     ${ws.version}`);
+      if (ws.debugLevel) console.log(`    调试级别: ${ws.debugLevel}`);
+      if (ws.os) console.log(`    操作系统: ${ws.os}`);
+      if (ws.createbase !== undefined) console.log(`    创建 Base: ${ws.createbase ? '是' : '否'}`);
+      if (ws.build !== undefined) console.log(`    编译 Base: ${ws.build ? '是' : '否'}`);
+    }
+
+    const projects = data.projects || (templateContent.type === 'project' ? [data] : []);
+    if (projects.length) {
+      console.log(chalk.cyan(`\n  ◆ 项目 (${projects.length})`));
+      for (const p of projects) {
+        console.log(`    ${chalk.green(p.name || '(未命名)')}`);
+        if (p.source) console.log(`      来源:     ${p.source}${p.branch ? ` (${p.branch})` : ''}`);
+        if (p.template) console.log(`      模板:     ${p.template}`);
+        if (p.type) console.log(`      构建类型: ${p.type}`);
+        if (p.debugLevel) console.log(`      调试级别: ${p.debugLevel}`);
+        if (p.makeTool) console.log(`      构建工具: ${p.makeTool}`);
+      }
+    }
+
+    const devices = data.devices || (templateContent.type === 'device' ? [data] : []);
+    if (devices.length) {
+      console.log(chalk.cyan(`\n  ◆ 设备 (${devices.length})`));
+      for (const d of devices) {
+        console.log(`    ${chalk.green(d.name || '(未命名)')}`);
+        if (d.ip) console.log(`      IP:     ${d.ip}`);
+        if (d.platform) console.log(`      平台:   ${Array.isArray(d.platform) ? d.platform.join(', ') : d.platform}`);
+        if (d.username) console.log(`      用户:   ${d.username}`);
+        const ports = [d.ssh && `SSH:${d.ssh}`, d.telnet && `Telnet:${d.telnet}`, d.ftp && `FTP:${d.ftp}`, d.gdb && `GDB:${d.gdb}`].filter(Boolean);
+        if (ports.length) console.log(`      端口:   ${ports.join('  ')}`);
+      }
+    }
+
+    console.log();
+  });
+
 // --- template apply <id> ---
 templateCommand
   .command('apply <id>')

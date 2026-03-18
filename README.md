@@ -384,6 +384,39 @@ sydev template list -t workspace   # 按类型过滤
   dev_env              Development Env     full         2026/3/17 18:10:20
 ```
 
+### template show
+
+查看模板的详细配置内容，包括 workspace、项目和设备信息。
+
+```bash
+sydev template show <模板ID>
+```
+
+**输出示例**：
+```
+模板: rk3568-lts-3.6.5-dev-dt
+──────────────────────────────────────────────────
+  ID:       rk3568-lts-365-dev-dt
+  类型:     full
+  描述:     RK3568 development template
+  创建时间: 2026/3/18 14:54:39
+  更新时间: 2026/3/18 14:54:39
+
+  ◆ Workspace
+    平台:     ARM64_GENERIC
+    版本:     lts_3.6.5
+    调试级别: release
+    操作系统: sylixos
+
+  ◆ 项目 (2)
+    bsprk3568
+      来源:     ssh://git@example.com/bsprk3568.git (main)
+      构建工具: make
+    myapp
+      来源:     ssh://git@example.com/myapp.git (dev)
+      构建工具: make
+```
+
 ### template apply
 
 从模板初始化环境。对 `full` 类型模板支持**部分应用**。

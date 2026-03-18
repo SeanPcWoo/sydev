@@ -318,6 +318,7 @@ sydev upload base --device board1
 
 ```bash
 sydev template apply <template>  # 应用编译模板
+sydev template show <id>         # 查看模板详细配置
 ```
 
 ### 说明
