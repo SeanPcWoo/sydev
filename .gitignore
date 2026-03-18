@@ -9,3 +9,5 @@ dist-pkg/
 coverage/
 .vitest/
 templates/
+.planning/
+.claude/
