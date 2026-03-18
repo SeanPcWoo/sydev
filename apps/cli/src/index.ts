@@ -9,6 +9,7 @@ import { projectCommand } from './commands/project.js';
 import { buildCommand } from './commands/build.js';
 import { cleanCommand } from './commands/clean.js';
 import { rebuildCommand } from './commands/rebuild.js';
+import { uploadCommand } from './commands/upload.js';
 import { deviceCommand } from './commands/device.js';
 import { templateCommand } from './commands/template.js';
 import { initCommand } from './commands/init.js';
@@ -42,12 +43,15 @@ program.hook('preAction', async (thisCommand, actionCommand) => {
     return;
   }
 
-  // 跳过 template（除 apply 外）和 init 命令的环境检查
+  // 跳过 template（除 apply 外）、init 和 upload 命令的环境检查
   const argv = process.argv;
   if (argv.includes('template') && !argv.includes('apply')) {
     return;
   }
   if (argv.includes('init')) {
+    return;
+  }
+  if (argv.includes('upload')) {
     return;
   }
   if (argv.includes('build') || argv.includes('clean') || argv.includes('rebuild')) {
@@ -75,6 +79,7 @@ program.addCommand(projectCommand);
 program.addCommand(buildCommand);
 program.addCommand(cleanCommand);
 program.addCommand(rebuildCommand);
+program.addCommand(uploadCommand);
 program.addCommand(deviceCommand);
 program.addCommand(templateCommand);
 program.addCommand(initCommand);

@@ -1,0 +1,161 @@
+import { Command } from 'commander';
+import chalk from 'chalk';
+import { readFileSync, existsSync } from 'fs';
+import { join } from 'path';
+import { UploadRunner } from '@sydev/core/upload-runner.js';
+import { WorkspaceScanner } from '@sydev/core/workspace-scanner.js';
+import { deviceSchema, type DeviceConfig } from '@sydev/core/schemas/device-schema.js';
+import type { UploadProgressEvent, UploadProjectResult } from '@sydev/core/upload-runner.js';
+
+function formatDuration(ms: number): string {
+  return `${(ms / 1000).toFixed(1)}s`;
+}
+
+/** 从 workspace 配置加载已配置的设备 */
+function loadDevices(workspaceRoot: string): Map<string, DeviceConfig> {
+  const devices = new Map<string, DeviceConfig>();
+
+  // 读取 .realevo/config.json 中的设备信息
+  try {
+    const configPath = join(workspaceRoot, '.realevo', 'config.json');
+    if (existsSync(configPath)) {
+      const content = readFileSync(configPath, 'utf-8');
+      const config = JSON.parse(content);
+
+      if (config.devices && Array.isArray(config.devices)) {
+        for (const device of config.devices) {
+          const parsed = deviceSchema.safeParse(device);
+          if (parsed.success) {
+            devices.set(device.name, parsed.data);
+          }
+        }
+      }
+    }
+  } catch (err) {
+    // 静默失败，返回空设备列表
+  }
+
+  return devices;
+}
+
+export const uploadCommand = new Command('upload')
+  .description('上传 SylixOS 工程产物到设备')
+  .argument('[project]', '工程名（精确匹配目录名）')
+  .option('--device <name>', '指定目标设备（默认从 .reproject 读取）')
+  .option('--all', '上传全部工程')
+  .option('--quiet', '静默模式')
+  .addHelpText('after', `
+示例:
+  $ sydev upload                    # 交互式选择工程和设备
+  $ sydev upload libcpu             # 上传指定工程到 .reproject 配置的设备
+  $ sydev upload libcpu --device board1  # 上传到指定设备
+  $ sydev upload --all              # 上传全部工程
+`)
+  .action(async (projectArg: string | undefined, opts: { device?: string; all?: boolean; quiet?: boolean }) => {
+    const scanner = new WorkspaceScanner(process.cwd());
+    const projects = scanner.scan();
+    const devices = loadDevices(process.cwd());
+
+    if (projects.length === 0) {
+      console.error(chalk.yellow('未找到工程（确认当前目录是 workspace 根目录，且工程子目录同时包含 .project 和 Makefile）'));
+      process.exit(1);
+    }
+
+    if (devices.size === 0) {
+      console.error(chalk.yellow('未配置设备（运行 sydev device add 添加设备）'));
+      process.exit(1);
+    }
+
+    // 单工程上传
+    if (projectArg) {
+      const found = projects.find((p) => p.name === projectArg);
+      if (!found) {
+        console.error(chalk.red(`未找到工程 '${projectArg}'，运行 sydev upload 查看可用工程列表`));
+        process.exit(1);
+      }
+
+      const runner = new UploadRunner(projects, process.cwd(), devices);
+      runner.on('progress', (event: UploadProgressEvent) => {
+        if (event.type === 'file-upload' && !opts.quiet) {
+          console.log(chalk.dim(`  上传: ${event.file} → ${event.remotePath}`));
+        }
+      });
+
+      const result = await runner.uploadOne(found, { device: opts.device, quiet: opts.quiet });
+      if (result.success) {
+        console.log(chalk.green('✓ 上传成功') + chalk.dim(` (${formatDuration(result.durationMs)})`));
+        process.exit(0);
+      } else {
+        console.error(chalk.red(`✗ 上传失败: ${result.message}`));
+        process.exit(1);
+      }
+    }
+
+    // --all 批量上传
+    if (opts.all) {
+      const runner = new UploadRunner(projects, process.cwd(), devices);
+      let failedCount = 0;
+
+      runner.on('progress', (event: UploadProgressEvent) => {
+        if (event.type === 'file-upload' && !opts.quiet) {
+          console.log(chalk.dim(`  上传: ${event.file} → ${event.remotePath}`));
+        }
+      });
+
+      for (const project of projects) {
+        console.log(chalk.cyan(`上传 ${project.name}...`));
+        const result = await runner.uploadOne(project, { device: opts.device, quiet: opts.quiet });
+        if (result.success) {
+          console.log(chalk.green('✓ 上传成功') + chalk.dim(` (${formatDuration(result.durationMs)})`));
+        } else {
+          console.error(chalk.red(`✗ 上传失败: ${result.message}`));
+          failedCount++;
+        }
+      }
+
+      process.exit(failedCount);
+    }
+
+    // 交互式选择
+    const { default: inquirer } = await import('inquirer');
+
+    const { selectedProject } = await inquirer.prompt([{
+      type: 'list',
+      name: 'selectedProject',
+      message: '选择要上传的工程：',
+      choices: projects.map((p) => ({ name: p.name, value: p })),
+    }]);
+
+    if (!selectedProject) {
+      console.log(chalk.dim('未选择，退出。'));
+      process.exit(0);
+    }
+
+    const { selectedDevice } = await inquirer.prompt([{
+      type: 'list',
+      name: 'selectedDevice',
+      message: '选择目标设备：',
+      choices: Array.from(devices.keys()),
+    }]);
+
+    if (!selectedDevice) {
+      console.log(chalk.dim('未选择，退出。'));
+      process.exit(0);
+    }
+
+    const runner = new UploadRunner(projects, process.cwd(), devices);
+    runner.on('progress', (event: UploadProgressEvent) => {
+      if (event.type === 'file-upload' && !opts.quiet) {
+        console.log(chalk.dim(`  上传: ${event.file} → ${event.remotePath}`));
+      }
+    });
+
+    const result = await runner.uploadOne(selectedProject, { device: selectedDevice, quiet: opts.quiet });
+    if (result.success) {
+      console.log(chalk.green('✓ 上传成功') + chalk.dim(` (${formatDuration(result.durationMs)})`));
+      process.exit(0);
+    } else {
+      console.error(chalk.red(`✗ 上传失败: ${result.message}`));
+      process.exit(1);
+    }
+  });

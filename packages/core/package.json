@@ -9,6 +9,7 @@
     "./env-checker.js": "./src/env-checker.ts",
     "./progress-reporter.js": "./src/progress-reporter.ts",
     "./build-runner.js": "./src/build-runner.ts",
+    "./upload-runner.js": "./src/upload-runner.ts",
     "./workspace-scanner.js": "./src/workspace-scanner.ts",
     "./config-manager.js": "./src/config-manager.ts",
     "./template-manager.js": "./src/template-manager.ts",

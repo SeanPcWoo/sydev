@@ -45,7 +45,8 @@
       "Bash(npm unlink -g sydev)",
       "mcp__plugin_claude-mem_mcp-search__smart_outline",
       "Bash(pnpm --filter @sydev/core exec tsc --noEmit)",
-      "Bash(pnpm build:*)"
+      "Bash(pnpm build:*)",
+      "mcp__plugin_claude-mem_mcp-search__search"
     ]
   }
 }
