@@ -1,6 +1,7 @@
 import { EventEmitter } from 'events';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
+import { createRequire } from 'module';
 import type Client from 'ftp';
 import type { ScannedProject } from './workspace-scanner.js';
 import type { DeviceConfig } from './schemas/device-schema.js';
@@ -81,20 +82,35 @@ export class UploadRunner extends EventEmitter {
       const content = readFileSync(reprojPath, 'utf-8');
       const config: ReprojectConfig = {};
 
-      // 解析设备名：<project><device>xxx</device></project>
-      const deviceMatch = content.match(/<device>([^<]+)<\/device>/i);
+      // 解析设备名：<DeviceSetting DevName="xxx"/>
+      const deviceMatch = content.match(/DevName="([^"]*)/i);
       if (deviceMatch) {
         config.device = deviceMatch[1].trim();
       }
 
-      // 解析上传路径：<file local="..." remote="..."/>
-      const fileMatches = content.matchAll(/<file[^>]*local="([^"]*)"[^>]*remote="([^"]*)"/gi);
+      // 解析上传路径：支持两种格式
+      // 1. <file local="..." remote="..."/>
+      // 2. <PairItem key="..." value="..."/> （key 是本地路径，value 是远程路径）
       config.uploadPaths = [];
+
+      // 先尝试解析 <file> 格式
+      const fileMatches = content.matchAll(/<file[^>]*local="([^"]*)"[^>]*remote="([^"]*)"/gi);
       for (const match of fileMatches) {
         config.uploadPaths.push({
           localPath: match[1],
           remotePath: match[2],
         });
+      }
+
+      // 如果没有找到 <file>，尝试解析 <PairItem> 格式
+      if (config.uploadPaths.length === 0) {
+        const pairMatches = content.matchAll(/<PairItem[^>]*key="([^"]*)"[^>]*value="([^"]*)"/gi);
+        for (const match of pairMatches) {
+          config.uploadPaths.push({
+            localPath: match[1],
+            remotePath: match[2],
+          });
+        }
       }
 
       return config;
@@ -265,7 +281,9 @@ export class UploadRunner extends EventEmitter {
       }
 
       // 连接 FTP 并上传
-      const client: any = new (await import('ftp')).default();
+      const require = createRequire(import.meta.url);
+      const FTPClient = require('ftp');
+      const client: any = new FTPClient();
 
       return await new Promise((resolve) => {
         const handleError = (err: Error) => {
