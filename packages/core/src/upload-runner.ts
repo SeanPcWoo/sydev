@@ -106,6 +106,30 @@ export class UploadRunner extends EventEmitter {
     });
   }
 
+  /** 确保远端目录存在，必要时创建 */
+  private ensureRemoteDir(client: Client, remotePath: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const dir = remotePath.substring(0, remotePath.lastIndexOf('/'));
+      if (!dir) {
+        resolve();
+        return;
+      }
+
+      // 尝试进入目录，如果失败则创建
+      client.cwd(dir, (err) => {
+        if (err) {
+          // 目录不存在，创建它
+          client.mkdir(dir, true, (mkErr) => {
+            if (mkErr) reject(mkErr);
+            else resolve();
+          });
+        } else {
+          resolve();
+        }
+      });
+    });
+  }
+
   /** 上传单个工程产物 */
   async uploadOne(
     project: ScannedProject,
@@ -213,6 +237,10 @@ export class UploadRunner extends EventEmitter {
                 remotePath: path.remotePath,
               });
 
+              // 确保远端目录存在
+              await this.ensureRemoteDir(client, path.remotePath);
+
+              // 上传文件
               await this.putFile(client, path.localPath, path.remotePath);
               uploadedCount++;
             }

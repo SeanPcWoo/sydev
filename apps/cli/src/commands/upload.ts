@@ -46,10 +46,10 @@ export const uploadCommand = new Command('upload')
   .option('--quiet', '静默模式')
   .addHelpText('after', `
 示例:
-  $ sydev upload                    # 交互式选择工程和设备
-  $ sydev upload libcpu             # 上传指定工程到 .reproject 配置的设备
-  $ sydev upload libcpu --device board1  # 上传到指定设备
-  $ sydev upload --all              # 上传全部工程
+  $ sydev upload                      # 交互式选择工程（支持多选）和设备
+  $ sydev upload libcpu               # 上传指定工程
+  $ sydev upload libcpu --device board1   # 上传到指定设备
+  $ sydev upload --all                # 上传全部工程
 `)
   .action(async (projectArg: string | undefined, opts: { device?: string; all?: boolean; quiet?: boolean }) => {
     const scanner = new WorkspaceScanner(process.cwd());
@@ -119,14 +119,15 @@ export const uploadCommand = new Command('upload')
     // 交互式选择
     const { default: inquirer } = await import('inquirer');
 
-    const { selectedProject } = await inquirer.prompt([{
-      type: 'list',
-      name: 'selectedProject',
-      message: '选择要上传的工程：',
+    const { selectedProjects } = await inquirer.prompt([{
+      type: 'checkbox',
+      name: 'selectedProjects',
+      message: '选择要上传的工程（可多选）：',
       choices: projects.map((p) => ({ name: p.name, value: p })),
+      validate: (answer: readonly unknown[]) => answer.length > 0 ? true : '请至少选择一个工程',
     }]);
 
-    if (!selectedProject) {
+    if (!selectedProjects || selectedProjects.length === 0) {
       console.log(chalk.dim('未选择，退出。'));
       process.exit(0);
     }
@@ -144,18 +145,24 @@ export const uploadCommand = new Command('upload')
     }
 
     const runner = new UploadRunner(projects, process.cwd(), devices);
-    runner.on('progress', (event: UploadProgressEvent) => {
-      if (event.type === 'file-upload' && !opts.quiet) {
-        console.log(chalk.dim(`  上传: ${event.file} → ${event.remotePath}`));
-      }
-    });
+    let failedCount = 0;
 
-    const result = await runner.uploadOne(selectedProject, { device: selectedDevice, quiet: opts.quiet });
-    if (result.success) {
-      console.log(chalk.green('✓ 上传成功') + chalk.dim(` (${formatDuration(result.durationMs)})`));
-      process.exit(0);
-    } else {
-      console.error(chalk.red(`✗ 上传失败: ${result.message}`));
-      process.exit(1);
+    for (const project of selectedProjects) {
+      console.log(chalk.cyan(`上传 ${project.name}...`));
+      runner.on('progress', (event: UploadProgressEvent) => {
+        if (event.type === 'file-upload' && !opts.quiet) {
+          console.log(chalk.dim(`  上传: ${event.file} → ${event.remotePath}`));
+        }
+      });
+
+      const result = await runner.uploadOne(project, { device: selectedDevice, quiet: opts.quiet });
+      if (result.success) {
+        console.log(chalk.green('✓ 上传成功') + chalk.dim(` (${formatDuration(result.durationMs)})`));
+      } else {
+        console.error(chalk.red(`✗ 上传失败: ${result.message}`));
+        failedCount++;
+      }
     }
+
+    process.exit(failedCount);
   });
