@@ -1,6 +1,7 @@
 import { EventEmitter } from 'events';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
+import Client from 'ftp';
 import type { ScannedProject } from './workspace-scanner.js';
 import type { DeviceConfig } from './schemas/device-schema.js';
 
@@ -95,6 +96,16 @@ export class UploadRunner extends EventEmitter {
     return result;
   }
 
+  /** 上传文件到 FTP 服务器 */
+  private putFile(client: Client, localPath: string, remotePath: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      client.put(localPath, remotePath, (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+  }
+
   /** 上传单个工程产物 */
   async uploadOne(
     project: ScannedProject,
@@ -153,7 +164,6 @@ export class UploadRunner extends EventEmitter {
       }
 
       // 验证本地文件存在
-      let uploadedCount = 0;
       for (const path of resolvedPaths) {
         if (!existsSync(path.localPath)) {
           return {
@@ -164,28 +174,71 @@ export class UploadRunner extends EventEmitter {
             device: deviceName,
           };
         }
-
-        this.emit('progress', {
-          type: 'file-upload',
-          projectName: project.name,
-          file: path.localPath,
-          remotePath: path.remotePath,
-        });
-
-        uploadedCount++;
       }
 
-      // TODO: 实现 FTP 上传
-      // 目前仅验证配置，实际上传留作后续实现
+      // 连接 FTP 并上传
+      const client = new Client();
 
-      return {
-        name: project.name,
-        success: true,
-        durationMs: Date.now() - startTime,
-        message: `已验证上传配置 (${uploadedCount} 文件)`,
-        filesUploaded: uploadedCount,
-        device: deviceName,
-      };
+      return await new Promise((resolve) => {
+        const handleError = (err: Error) => {
+          client.destroy();
+          resolve({
+            name: project.name,
+            success: false,
+            durationMs: Date.now() - startTime,
+            message: `FTP 连接失败: ${err.message}`,
+            device: deviceName,
+          });
+        };
+
+        client.on('error', handleError);
+
+        client.connect({
+          host: device.ip,
+          port: device.ftp,
+          user: device.username,
+          password: device.password ?? '',
+        });
+
+        client.on('ready', async () => {
+          try {
+            let uploadedCount = 0;
+
+            // 逐个上传文件
+            for (const path of resolvedPaths) {
+              this.emit('progress', {
+                type: 'file-upload',
+                projectName: project.name,
+                file: path.localPath,
+                remotePath: path.remotePath,
+              });
+
+              await this.putFile(client, path.localPath, path.remotePath);
+              uploadedCount++;
+            }
+
+            client.end();
+
+            resolve({
+              name: project.name,
+              success: true,
+              durationMs: Date.now() - startTime,
+              message: `上传完成 (${uploadedCount} 文件)`,
+              filesUploaded: uploadedCount,
+              device: deviceName,
+            });
+          } catch (err) {
+            client.destroy();
+            resolve({
+              name: project.name,
+              success: false,
+              durationMs: Date.now() - startTime,
+              message: `上传失败: ${err instanceof Error ? err.message : String(err)}`,
+              device: deviceName,
+            });
+          }
+        });
+      });
     } catch (err) {
       return {
         name: project.name,
