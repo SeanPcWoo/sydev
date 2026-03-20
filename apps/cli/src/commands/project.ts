@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { ProjectOptionParser, generateHelpExample } from '../options/index.js';
+import { WorkspaceScanner } from '@sydev/core/workspace-scanner.js';
 
 const helpExamples = {
   '交互式创建 (推荐)': 'sydev project create',
@@ -60,10 +61,8 @@ projectCommand
       return;
     }
 
-    // 简单实现：列出包含 .rlproject 的目录
-    const dirs = fs.readdirSync(process.cwd(), { withFileTypes: true })
-      .filter(d => d.isDirectory() && fs.existsSync(path.join(process.cwd(), d.name, '.rlproject')))
-      .map(d => d.name);
+    const scanner = new WorkspaceScanner(process.cwd());
+    const dirs = scanner.scan().map((project) => project.name);
 
     if (dirs.length === 0) {
       console.log(chalk.dim('  未找到项目'));

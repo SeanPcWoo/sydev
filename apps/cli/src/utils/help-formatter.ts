@@ -17,7 +17,7 @@ export function formatHelp(cmd: Command, helper: Help): string {
 
   // 用法
   output += chalk.bold('\n用法:\n');
-  output += `${indent}$ ${cmd.name()} ${helper.commandUsage(cmd)}\n`;
+  output += `${indent}$ ${helper.commandUsage(cmd)}\n`;
 
   // 命令列表
   const commands = cmd.commands.filter(c => !(c as any).hidden);

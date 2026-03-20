@@ -120,6 +120,10 @@ export abstract class BaseOptionParser<T> {
    * 判断是否提供了足够的参数跳过交互
    */
   hasEnoughOptions(options: Record<string, any>): boolean {
+    if (options.config) {
+      return true;
+    }
+
     // 至少需要提供一些参数（除了 --config 和内部字段）
     const providedOptions = Object.entries(options)
       .filter(([key, value]) =>

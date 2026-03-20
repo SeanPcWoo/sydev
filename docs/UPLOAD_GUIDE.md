@@ -1,466 +1,315 @@
-# sydev upload 详细使用指南
+# sydev upload 使用指南
 
-`sydev upload` 命令用于通过 FTP 将编译产物上传到目标设备。本指南详细说明如何配置和使用上传功能。
+`sydev upload` 用于把项目产物上传到目标设备。本文档重点说明 `.reproject` 配置、设备选择规则、路径变量替换，以及当前实现的限制。
 
-## 目录
+## 命令形式
 
-- [快速开始](#快速开始)
-- [配置文件格式](#配置文件格式)
-- [.reproject 配置](#reproject-配置)
-- [config.mk 配置](#configmk-配置)
-- [路径变量替换](#路径变量替换)
-- [使用示例](#使用示例)
-- [故障排除](#故障排除)
+```bash
+sydev upload
+sydev upload <project>
+sydev upload <project> --device <device>
+sydev upload <project1,project2> --device <device>
+sydev upload <project1:project2> --device <device>
+sydev upload --all --device <device>
+```
 
----
+## 当前实现的规则
 
-## 快速开始
+- 单项目上传时，可以不显式传 `--device`，命令会尝试从该项目 `.reproject` 中读取默认设备
+- 多项目上传时，必须显式传 `--device`
+- `--all` 时，必须显式传 `--device`
+- 交互模式下，先多选项目，再选择设备
+- 若能从 workspace 配置中检测到 base 目录，且 base 目录下存在 `.reproject`，则 `base` 会作为可上传项目出现
 
-### 1. 配置目标设备
+## 前置条件
+
+### 1. 运行目录必须是 workspace 根目录
+
+`upload` 会从当前目录扫描项目并加载设备配置。
+
+### 2. 目标项目必须可被识别
+
+当前实现中，项目需要位于 workspace 一级子目录，并同时包含：
+
+- `.project`
+- `Makefile`
+
+### 3. 设备信息必须可读取
+
+`upload` / `device list` 当前按以下顺序读取设备：
+
+1. `.realevo/devicelist.json`
+2. `.realevo/config.json`
+
+### 4. 每个要上传的项目都需要 `.reproject`
+
+上传规则由项目目录中的 `.reproject` 文件定义。
+
+## 最短工作流
+
+### 1. 添加设备
 
 ```bash
 sydev device add
 ```
 
-交互式输入：
-- 设备名称：`board1`
-- IP 地址：`192.168.1.100`
-- 平台：`ARM64_A53`
-- FTP 端口：`21` (默认)
-- 用户名：`root`
-- 密码：(可选)
-
-### 2. 配置工程上传路径
-
-在工程目录下创建 `.reproject` 文件：
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<project>
-  <device>board1</device>
-  <upload>
-    <file local="$(WORKSPACE_libcpu)\$(Output)\libcpu.so"
-          remote="/system/lib/libcpu.so"/>
-  </upload>
-</project>
-```
-
-### 3. 上传工程
+或：
 
 ```bash
-# 交互式选择工程和设备
-sydev upload
+sydev device add --config device.json
+```
 
-# 或指定工程和设备
+### 2. 编译项目
+
+```bash
+sydev build libcpu
+```
+
+### 3. 上传
+
+```bash
 sydev upload libcpu --device board1
 ```
 
----
+## `.reproject` 文件格式
 
-## 配置文件格式
-
-### .reproject XML 结构
-
-`.reproject` 文件定义了如何上传工程产物，应放在工程根目录。
-
-#### 完整格式
+### 最小示例
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <project>
-  <!-- 可选：指定默认上传设备 -->
   <device>board1</device>
-
-  <!-- 定义上传文件列表 -->
   <upload>
-    <!-- 每个 file 标签定义一个上传规则 -->
     <file local="$(WORKSPACE_libcpu)\$(Output)\libcpu.so"
           remote="/system/lib/libcpu.so"/>
-
-    <file local="$(WORKSPACE_libcpu)\$(Output)\libcpu.a"
-          remote="/system/lib/libcpu.a"/>
-
-    <!-- 支持目录上传 -->
-    <file local="$(WORKSPACE_libnet)\$(Output)\include"
-          remote="/system/include/libnet"/>
   </upload>
 </project>
 ```
 
-#### 属性说明
-
-| 属性 | 说明 | 示例 |
-|------|------|------|
-| `<device>` | 默认上传设备（可被 CLI `--device` 覆盖） | `board1` |
-| `<file local>` | 本地源文件路径（支持变量） | `$(WORKSPACE_libcpu)\$(Output)\libcpu.so` |
-| `<file remote>` | 远端目标路径 | `/system/lib/libcpu.so` |
-
----
-
-## config.mk 配置
-
-### DEBUG_LEVEL 设置
-
-`sydev upload` 会自动从工程的 `config.mk` 读取 `DEBUG_LEVEL` 来确定输出目录名。
-
-```makefile
-# config.mk
-DEBUG_LEVEL = debug    # 对应 Debug 目录
-# 或
-DEBUG_LEVEL = release  # 对应 Release 目录
-```
-
-#### 自动映射
-
-- `DEBUG_LEVEL = debug` → `$(Output)` 替换为 `Debug`
-- `DEBUG_LEVEL = release` → `$(Output)` 替换为 `Release`
-- 默认值：`Release`（如果 config.mk 不存在或不包含该变量）
-
----
-
-## 路径变量替换
-
-### 支持的变量
-
-#### 1. WORKSPACE_<project> 变量
-
-工程路径变量自动从工作空间生成。
-
-```
-$(WORKSPACE_libcpu)      → /path/to/workspace/libcpu
-$(WORKSPACE_libnet)      → /path/to/workspace/libnet
-$(WORKSPACE_lts)         → /path/to/workspace/lts
-```
-
-**规则**：
-- 工程名中的 `-` (连字符) 转换为 `_` (下划线)
-- 例如：`my-lib` → `$(WORKSPACE_my_lib)`
-
-#### 2. $(Output) 变量
-
-根据 `config.mk` 中的 `DEBUG_LEVEL` 自动替换。
-
-```
-$(Output)  →  Debug      (if DEBUG_LEVEL = debug)
-$(Output)  →  Release    (if DEBUG_LEVEL = release)
-```
-
-#### 3. Base 工程特殊处理
-
-对于包含 `libsylixos` 关键字的路径，自动使用 base 路径替换 `$(WORKSPACE_xxx)`：
-
-```
-原始路径：$(WORKSPACE_lts)\libsylixos\$(Output)\libvpmpdm.so
-Base 路径：/path/to/sylixos-base
-替换后：/path/to/sylixos-base/libsylixos/Release/libvpmpdm.so
-```
-
-### 完整替换示例
-
-原始配置：
-
-```xml
-<file local="$(WORKSPACE_libcpu)\$(Output)\lib\libcpu.so"
-      remote="/system/lib/libcpu.so"/>
-```
-
-替换过程（假设工程在 `/workspace/libcpu`，DEBUG_LEVEL=debug）：
-
-```
-1. $(WORKSPACE_libcpu) → /workspace/libcpu
-2. $(Output) → Debug
-3. 最终路径：/workspace/libcpu/Debug/lib/libcpu.so
-```
-
----
-
-## 使用示例
-
-### 示例 1：单工程上传
-
-```bash
-# 交互式上传
-sydev upload
-
-# 选择工程：libcpu
-# 选择设备：board1
-# 结果：自动上传 libcpu 的产物
-```
-
-### 示例 2：多工程批量上传
-
-```bash
-# 使用逗号分隔
-sydev upload libcpu,libnet --device board1
-
-# 或使用冒号分隔
-sydev upload libcpu:libnet:libfs --device dev1
-
-# 上传全部工程
-sydev upload --all --device board1
-```
-
-### 示例 3：上传 base 工程
-
-Base 工程必须指定设备：
-
-```bash
-# 上传 base 工程
-sydev upload base --device board1
-
-# 同时上传 base 和其他工程
-sydev upload base,libcpu,libnet --device board1
-```
-
-### 示例 4：静默模式
-
-不显示文件上传进度：
-
-```bash
-sydev upload libcpu --device board1 --quiet
-```
-
-### 示例 5：完整的 .reproject 示例
-
-对于一个复杂的工程，`.reproject` 可能如下：
+### 完整示例
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <project>
   <device>board1</device>
   <upload>
-    <!-- 共享库 -->
     <file local="$(WORKSPACE_libcpu)\$(Output)\lib\libcpu.so"
           remote="/system/lib/libcpu.so"/>
 
-    <!-- 静态库 -->
-    <file local="$(WORKSPACE_libcpu)\$(Output)\lib\libcpu.a"
-          remote="/usr/lib/libcpu.a"/>
-
-    <!-- 头文件 -->
     <file local="$(WORKSPACE_libcpu)\$(Output)\include\cpu.h"
           remote="/usr/include/cpu.h"/>
 
-    <!-- Base 工程的库 -->
-    <file local="$(WORKSPACE_lts)\libsylixos\$(Output)\lib\libsylixos.so"
-          remote="/system/lib/libsylixos.so"/>
+    <file local="$(WORKSPACE_lts)\libsylixos\$(Output)\libvpmpdm.so"
+          remote="/system/lib/libvpmpdm.so"/>
   </upload>
 </project>
 ```
 
----
+## 设备选择规则
 
-## 工作流程
-
-### 编译到上传的完整流程
+### 单项目上传
 
 ```bash
-# 1. 创建工作空间
-sydev workspace init \
-  --base /path/to/sylixos \
-  --platform ARM64_A53
+sydev upload libcpu
+```
 
-# 2. 添加工程
-sydev workspace add libcpu
-sydev workspace add libnet
+规则：
 
-# 3. 配置目标设备
-sydev device add
-# → 添加 board1: 192.168.1.100
+- 如果命令行传了 `--device`，优先使用命令行值
+- 否则尝试使用 `.reproject` 中的 `<device>`
+- 若两者都没有，上传失败
 
-# 4. 为每个工程配置 .reproject
-# → libcpu/.reproject
-# → libnet/.reproject
+### 多项目上传
 
-# 5. 编译工程
-sydev build libcpu
-sydev build libnet
-
-# 6. 上传到设备
+```bash
 sydev upload libcpu,libnet --device board1
-
-# 7. 验证上传成功
-# → 连接到设备验证文件存在
 ```
 
----
+规则：
 
-## 故障排除
+- 当前实现要求必须显式传 `--device`
+- 不会为每个项目单独读取不同的默认设备
 
-### 问题 1：找不到设备
+### `--all`
 
-**错误信息**：`设备 'board1' 未配置`
-
-**解决方案**：
 ```bash
-# 检查已配置的设备
-sydev device list
-
-# 如果设备不存在，添加它
-sydev device add --name board1 --ip 192.168.1.100 --username root
+sydev upload --all --device board1
 ```
 
-### 问题 2：找不到 .reproject
+规则：
 
-**错误信息**：`未配置上传路径（检查 .reproject）`
+- 当前实现要求必须显式传 `--device`
+- 会遍历当前可见的全部项目
+- 若 `base` 被检测到，也会一并参与上传
 
-**解决方案**：
+## 支持的项目列表写法
+
+### 单项目
+
 ```bash
-# 在工程目录创建 .reproject
-cd libcpu
-cat > .reproject << 'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<project>
-  <device>board1</device>
-  <upload>
-    <file local="$(WORKSPACE_libcpu)\$(Output)\libcpu.so"
-          remote="/system/lib/libcpu.so"/>
-  </upload>
-</project>
-EOF
+sydev upload libcpu --device board1
 ```
 
-### 问题 3：本地文件不存在
+### 逗号分隔
 
-**错误信息**：`文件不存在: /path/to/libcpu/Release/libcpu.so`
-
-**解决方案**：
-1. 确保工程已编译：`sydev build libcpu`
-2. 检查 config.mk 中的 DEBUG_LEVEL 与实际编译配置一致
-3. 检查 .reproject 中的本地路径是否正确
-
-### 问题 4：FTP 连接失败
-
-**错误信息**：`FTP 连接失败: ...`
-
-**解决方案**：
-1. 检查设备 IP 和 FTP 端口：`sydev device list`
-2. 确认设备可访问：`ping 192.168.1.100`
-3. 确认 FTP 服务运行：`telnet 192.168.1.100 21`
-4. 检查用户名和密码是否正确
-
-### 问题 5：base 工程上传失败
-
-**错误信息**：`上传 base 工程必须指定 --device 参数`
-
-**解决方案**：
 ```bash
-# ✗ 错误：没有指定设备
-sydev upload base
+sydev upload libcpu,libnet,libfs --device board1
+```
 
-# ✓ 正确：指定设备
+### 冒号分隔
+
+```bash
+sydev upload libcpu:libnet:libfs --device board1
+```
+
+### 交互式多选
+
+```bash
+sydev upload
+```
+
+## 路径变量替换
+
+### `$(WORKSPACE_<project>)`
+
+会替换成 workspace 中对应项目的绝对路径。
+
+示例：
+
+```text
+$(WORKSPACE_libcpu) -> /path/to/workspace/libcpu
+```
+
+### `$(Output)`
+
+根据项目 `config.mk` 中的 `DEBUG_LEVEL` 自动替换：
+
+- `debug` -> `Debug`
+- `release` -> `Release`
+
+如果无法读取到有效值，默认按 `Release` 处理。
+
+### Base 特殊处理
+
+当本地路径包含 `libsylixos` 关键字时，会使用 base 路径进行替换。
+
+示例：
+
+```text
+原始: $(WORKSPACE_lts)\libsylixos\$(Output)\libvpmpdm.so
+替换: /path/to/base/libsylixos/Release/libvpmpdm.so
+```
+
+## 示例
+
+### 单项目上传
+
+```bash
+sydev build libcpu
+sydev upload libcpu --device board1
+```
+
+### 依赖 `.reproject` 默认设备
+
+```bash
+sydev upload libcpu
+```
+
+前提：
+
+- `libcpu/.reproject` 中有 `<device>board1</device>`
+
+### 多项目上传
+
+```bash
+sydev upload libcpu,libnet --device board1
+```
+
+### 上传全部项目
+
+```bash
+sydev upload --all --device board1
+```
+
+### 上传 base
+
+```bash
 sydev upload base --device board1
 ```
 
----
+前提：
 
-## 最佳实践
+- `.realevo/config.json` 中能解析出 base 路径
+- base 目录下存在 `.reproject`
 
-1. **使用标准路径结构**
-   ```
-   $(WORKSPACE_<project>)\$(Output)\<artifact>
-   ```
+## 常见故障
 
-2. **在 .reproject 中指定默认设备**
-   ```xml
-   <device>board1</device>
-   ```
-   这样可以跳过 `--device` 参数（除了 base 工程）
+### `未配置设备（运行 sydev device add 添加设备）`
 
-3. **验证编译配置**
-   确保 config.mk 中的 DEBUG_LEVEL 与实际编译方式一致
+说明：
 
-4. **批量上传时指定设备**
-   ```bash
-   sydev upload libcpu,libnet,libfs --device board1
-   ```
+- 当前 workspace 中没有可读取的设备配置
 
-5. **使用 --quiet 模式用于自动化脚本**
-   ```bash
-   sydev upload --all --device board1 --quiet
-   ```
+处理：
 
----
-
-## API 集成
-
-如果你正在开发 SylixOS IDE Skill，可以参考以下接口：
-
-### UploadRunner 类
-
-位置：`packages/core/src/upload-runner.ts`
-
-```typescript
-// 创建上传管理器
-const runner = new UploadRunner(
-  projects: ScannedProject[],
-  workspaceRoot: string,
-  devices: Map<string, DeviceConfig>
-);
-
-// 上传单个工程
-const result = await runner.uploadOne(project, {
-  device: 'board1',      // 设备名
-  quiet: false           // 静默模式
-});
-
-// 结果包含：
-// - name: 工程名
-// - success: 是否成功
-// - durationMs: 耗时（毫秒）
-// - message: 状态消息
-// - filesUploaded: 上传的文件数
-// - device: 上传的设备名
+```bash
+sydev device add
+sydev device list
 ```
 
-### 监听上传进度
+### `上传多个工程时必须指定设备 (--device)`
 
-```typescript
-runner.on('progress', (event) => {
-  if (event.type === 'file-upload') {
-    console.log(`Uploading: ${event.file} → ${event.remotePath}`);
-  }
-});
+说明：
+
+- 这是当前实现的硬性要求
+
+处理：
+
+```bash
+sydev upload libcpu,libnet --device board1
 ```
 
----
+### `上传所有工程时必须指定设备 (--device)`
 
-## 配置文件位置
+处理：
 
-工作空间中的关键配置文件：
-
-```
-workspace/
-├── .realevo/
-│   └── config.json          # 工作空间和设备配置
-├── .sydev/
-│   └── Makefile             # 自动生成的编译文件
-├── libcpu/
-│   ├── config.mk            # 编译配置（DEBUG_LEVEL）
-│   ├── Makefile             # 工程 Makefile
-│   ├── .project             # 工程描述
-│   └── .reproject           # 上传配置（自定义）
-└── libnet/
-    ├── config.mk
-    ├── Makefile
-    ├── .project
-    └── .reproject
+```bash
+sydev upload --all --device board1
 ```
 
----
+### `未找到工程`
 
-## 相关命令
+说明：
 
-| 命令 | 说明 |
-|------|------|
-| `sydev device add` | 配置上传设备 |
-| `sydev build` | 编译工程（产生 $(Output) 目录） |
-| `sydev upload` | 上传产物 |
-| `sydev workspace` | 管理工作空间 |
+- 当前目录不是 workspace 根目录，或项目目录结构不满足要求
 
----
+处理：
 
-## 更多信息
+```bash
+sydev project list
+sydev build
+```
+
+### `上传失败: ...`
+
+优先检查：
+
+1. 对应项目是否已完成编译
+2. `.reproject` 中的本地路径是否真实存在
+3. 设备 IP、端口、用户名和密码是否正确
+4. 设备端 FTP 服务是否可访问
+
+## 推荐搭配的命令
+
+```bash
+sydev build libcpu
+sydev build init
+sydev device list
+sydev project list
+```
+
+## 相关文档
 
 - [完整命令参考](./COMMANDS.md)
-- [API 参考](./API_REFERENCE.md)
+- [配置文件参考](./CONFIG_FILES.md)
+- [快速参考卡片](./QUICK_REFERENCE.md)

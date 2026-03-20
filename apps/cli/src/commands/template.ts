@@ -59,17 +59,96 @@ function getGlobalTemplateDir(): string {
   return join(homedir(), '.sydev');
 }
 
+type TemplateContent = { type: TemplateType; data: any };
+type ApplyCommandOptions = { cwd?: string; basePath?: string; yes?: boolean };
+
+function detectTemplateContent(parsed: any): TemplateContent {
+  if (parsed.type && ['workspace', 'project', 'device'].includes(parsed.type)) {
+    const detectedType = parsed.type as TemplateType;
+    const templateData = parsed[detectedType];
+    if (!templateData) {
+      throw new Error(`文件中缺少 ${detectedType} 字段`);
+    }
+    return { type: detectedType, data: templateData };
+  }
+
+  if (parsed.type === 'full') {
+    const templateData = parsed.data || parsed.full;
+    if (!templateData) {
+      throw new Error('文件中缺少 data 或 full 字段');
+    }
+    return { type: 'full', data: templateData };
+  }
+
+  if (parsed.workspace) {
+    return { type: 'full', data: parsed };
+  }
+
+  throw new Error('无法识别配置类型，文件需包含 type 字段或 workspace 字段');
+}
+
+function loadTemplateContentFromFile(file: string): TemplateContent {
+  let json: string;
+  try {
+    json = readFileSync(file, 'utf-8');
+  } catch {
+    throw new Error(`无法读取文件: ${file}`);
+  }
+
+  let parsed: any;
+  try {
+    parsed = JSON.parse(json);
+  } catch {
+    throw new Error('文件不是有效的 JSON');
+  }
+
+  return detectTemplateContent(parsed);
+}
+
+async function resolveApplyPaths(opts: ApplyCommandOptions): Promise<{ cwd: string; basePath: string }> {
+  let cwd = opts.cwd?.trim();
+  if (!cwd) {
+    if (opts.yes) {
+      cwd = process.cwd();
+    } else {
+      const answers = await inquirer.prompt([
+        { type: 'input', name: 'cwd', message: 'Workspace 路径:', default: process.cwd() },
+      ]);
+      cwd = answers.cwd.trim();
+    }
+  }
+
+  let basePath = opts.basePath?.trim();
+  if (!basePath) {
+    const defaultBasePath = `${cwd}/.realevo/base`;
+    if (opts.yes) {
+      basePath = defaultBasePath;
+    } else {
+      const answers = await inquirer.prompt([
+        { type: 'input', name: 'basePath', message: 'Base 目录路径:', default: defaultBasePath },
+      ]);
+      basePath = answers.basePath.trim();
+    }
+  }
+
+  return { cwd: cwd!, basePath: basePath! };
+}
+
 export const templateCommand = new Command('template')
   .description('管理配置模板')
   .addHelpText('after', `
 示例:
-  $ sydev template create     # 创建配置模板
-  $ sydev template list       # 查看所有模板
-  $ sydev template show <id>  # 查看模板详细配置
-  $ sydev template apply <id> # 从模板初始化环境
-  $ sydev template delete <id># 删除模板
-  $ sydev template export     # 从当前 workspace 导出配置
-  $ sydev template import <f> # 从 JSON 文件导入配置
+  $ sydev template create              # 创建配置模板
+  $ sydev template list                # 查看所有模板
+  $ sydev template show <id>           # 查看模板详细配置
+  $ sydev template apply <id>          # 从模板初始化环境（交互模式）
+  $ sydev template apply config.json   # 从 JSON 文件应用（交互模式）
+  $ sydev template apply config.json -y                    # 从 JSON 文件应用（非交互）
+  $ sydev template apply <id> --cwd /path/to/ws -y         # 指定路径，跳过提示
+  $ sydev template apply config.json --cwd /ws --base-path /base -y
+  $ sydev template delete <id>         # 删除模板
+  $ sydev template export              # 从当前 workspace 导出配置
+  $ sydev template import <f>          # 从 JSON 文件导入配置
 `);
 
 // --- template create ---
@@ -206,35 +285,42 @@ templateCommand
     console.log();
   });
 
-// --- template apply <id> ---
+// --- template apply <source> ---
 templateCommand
-  .command('apply <id>')
-  .description('从模板初始化环境')
-  .action(async (id: string) => {
+  .command('apply <source>')
+  .description('从模板或 JSON 配置初始化环境')
+  .option('--cwd <path>', 'Workspace 路径')
+  .option('--base-path <path>', 'Base 目录路径')
+  .option('-y, --yes', '跳过所有交互提示（全选 + 错误时继续）')
+  .addHelpText('after', `
+示例:
+  $ sydev template apply my-template
+  $ sydev template apply config.json
+  $ sydev template apply config.json --cwd /path/to/ws --base-path /path/to/base -y
+  $ sydev template apply my-template --cwd /path/to/ws
+`)
+  .action(async (source: string, opts: ApplyCommandOptions) => {
     const tm = new TemplateManager(getGlobalTemplateDir());
 
-    let loaded;
+    let templateContent: TemplateContent;
+    let sourceLabel: string;
     try {
-      loaded = tm.load(id);
+      if (source.endsWith('.json') || existsSync(source)) {
+        templateContent = loadTemplateContentFromFile(source);
+        sourceLabel = `${source} (${templateContent.type})`;
+      } else {
+        const loaded = tm.load(source);
+        templateContent = loaded.content as TemplateContent;
+        sourceLabel = `${loaded.meta.name} (${loaded.meta.type})`;
+      }
     } catch (err: any) {
       console.error(chalk.red(`✗ ${err.message}`));
       return;
     }
 
-    const { meta, content } = loaded;
-    const templateContent = content as { type: string; data: any };
-    console.log(chalk.cyan(`\n应用模板: ${meta.name} (${meta.type})\n`));
+    console.log(chalk.cyan(`\n应用模板: ${sourceLabel}\n`));
 
-    // 应用时收集 workspace 路径
-    const { cwd } = await inquirer.prompt([
-      { type: 'input', name: 'cwd', message: 'Workspace 路径:', default: process.cwd() },
-    ]);
-    const { basePath } = await inquirer.prompt([
-      {
-        type: 'input', name: 'basePath', message: 'Base 目录路径:',
-        default: `${cwd.trim()}/.realevo/base`,
-      },
-    ]);
+    const { cwd, basePath } = await resolveApplyPaths(opts);
 
     let config: Partial<FullConfig>;
 
@@ -249,14 +335,16 @@ templateCommand
         fullData.devices.forEach((d) => parts.push(`device:${d.name}`));
       }
 
-      const { selected } = await inquirer.prompt<{ selected: string[] }>([{
-        type: 'checkbox', name: 'selected', message: '选择要应用的部分:',
-        choices: parts.map((p) => ({ name: p, value: p, checked: true })),
-      }] as any);
+      const selected = opts.yes
+        ? parts
+        : (await inquirer.prompt<{ selected: string[] }>([{
+            type: 'checkbox', name: 'selected', message: '选择要应用的部分:',
+            choices: parts.map((p) => ({ name: p, value: p, checked: true })),
+          }] as any)).selected;
 
       config = { schemaVersion: 1 } as any;
       if (selected.includes('workspace')) {
-        (config as any).workspace = { ...fullData.workspace, cwd: cwd.trim(), basePath: basePath.trim() };
+        (config as any).workspace = { ...fullData.workspace, cwd, basePath };
       }
       const selProjects = (fullData.projects ?? []).filter(
         (p) => selected.includes(`project:${p.name}`)
@@ -272,7 +360,7 @@ templateCommand
         return;
       }
     } else if (templateContent.type === 'workspace') {
-      config = { schemaVersion: 1, workspace: { ...templateContent.data, cwd: cwd.trim(), basePath: basePath.trim() } } as any;
+      config = { schemaVersion: 1, workspace: { ...templateContent.data, cwd, basePath } } as any;
     } else if (templateContent.type === 'project') {
       console.error(chalk.yellow('⚠ project 模板需要在已有 workspace 中使用，请提供 workspace 配置'));
       return;
@@ -296,6 +384,9 @@ templateCommand
     const result = await orchestrator.execute(config, {
       onStepError: async (step, error) => {
         console.error(chalk.red(`\n✗ ${step} 失败: ${error}`));
+        if (opts.yes) {
+          return true;
+        }
         const { shouldContinue } = await inquirer.prompt([
           { type: 'confirm', name: 'shouldContinue', message: '是否继续执行后续步骤?', default: true },
         ]);
@@ -528,68 +619,39 @@ templateCommand
 templateCommand
   .command('import <file>')
   .description('从 JSON 文件导入配置')
-  .action(async (file: string) => {
-    let json: string;
-    try {
-      json = readFileSync(file, 'utf-8');
-    } catch {
-      console.error(chalk.red(`✗ 无法读取文件: ${file}`));
-      return;
-    }
-
-    let parsed: any;
-    try {
-      parsed = JSON.parse(json);
-    } catch {
-      console.error(chalk.red('✗ 文件不是有效的 JSON'));
-      return;
-    }
-
-    // 自动检测类型：有 workspace 字段且无 type 字段 → full，否则按 type 字段判断
+  .option('-y, --yes', '跳过交互提示，直接导入不保存为模板')
+  .action(async (file: string, opts: { yes?: boolean }) => {
     let detectedType: TemplateType;
     let templateData: any;
-
-    if (parsed.type && ['workspace', 'project', 'device'].includes(parsed.type)) {
-      detectedType = parsed.type;
-      templateData = parsed[detectedType];
-      if (!templateData) {
-        console.error(chalk.red(`✗ 文件中缺少 ${detectedType} 字段`));
-        return;
-      }
-    } else if (parsed.type === 'full') {
-      detectedType = 'full';
-      // 支持 { type: "full", data: {...} } 或 { type: "full", full: {...} } 格式
-      templateData = parsed.data || parsed.full;
-      if (!templateData) {
-        console.error(chalk.red('✗ 文件中缺少 data 或 full 字段'));
-        return;
-      }
-    } else if (parsed.workspace) {
-      detectedType = 'full';
-      templateData = parsed;
-    } else {
-      console.error(chalk.red('✗ 无法识别配置类型，文件需包含 type 字段或 workspace 字段'));
+    try {
+      const detected = loadTemplateContentFromFile(file);
+      detectedType = detected.type;
+      templateData = detected.data;
+    } catch (err: any) {
+      console.error(chalk.red(`✗ ${err.message}`));
       return;
     }
 
     console.log(chalk.green(`✓ 检测到 ${detectedType} 类型配置`));
 
-    const { saveAsTemplate } = await inquirer.prompt([
-      { type: 'confirm', name: 'saveAsTemplate', message: '是否保存为模板?', default: true },
-    ]);
-
-    if (saveAsTemplate) {
-      const { name, description } = await inquirer.prompt([
-        { type: 'input', name: 'name', message: '模板名称:', validate: (v: string) => v.trim() ? true : '名称不能为空' },
-        { type: 'input', name: 'description', message: '模板描述:', default: '' },
+    if (!opts.yes) {
+      const { saveAsTemplate } = await inquirer.prompt([
+        { type: 'confirm', name: 'saveAsTemplate', message: '是否保存为模板?', default: true },
       ]);
 
-      const tm = new TemplateManager(getGlobalTemplateDir());
-      try {
-        const meta = tm.save(name, description, detectedType, templateData);
-        console.log(chalk.green(`✓ 已保存为模板: ${meta.id} (${meta.type})`));
-      } catch (err: any) {
-        console.error(chalk.red(`✗ 保存失败: ${err.message}`));
+      if (saveAsTemplate) {
+        const { name, description } = await inquirer.prompt([
+          { type: 'input', name: 'name', message: '模板名称:', validate: (v: string) => v.trim() ? true : '名称不能为空' },
+          { type: 'input', name: 'description', message: '模板描述:', default: '' },
+        ]);
+
+        const tm = new TemplateManager(getGlobalTemplateDir());
+        try {
+          const meta = tm.save(name, description, detectedType, templateData);
+          console.log(chalk.green(`✓ 已保存为模板: ${meta.id} (${meta.type})`));
+        } catch (err: any) {
+          console.error(chalk.red(`✗ 保存失败: ${err.message}`));
+        }
       }
     }
   });
