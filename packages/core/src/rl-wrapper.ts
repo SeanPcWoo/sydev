@@ -1,5 +1,6 @@
 import { spawn } from 'child_process';
-import { mkdirSync, existsSync } from 'fs';
+import { mkdirSync, existsSync, readFileSync, writeFileSync } from 'fs';
+import { join } from 'path';
 import { ProgressReporter } from './progress-reporter.js';
 
 export interface RlCommandResult {
@@ -154,6 +155,9 @@ export class RlWrapper {
     if (config.os) args.push(`--os=${config.os}`);
 
     const result = await executeRlCommand('rl-workspace', args, this.progressReporter, config.cwd);
+    if (config.cwd) {
+      syncBaseConfigMkPlatforms(config.cwd, config.basePath);
+    }
     if (result.success) {
       this.progressReporter.emit('step', { name: '初始化 Workspace', progress: 100 });
     } else {
@@ -214,4 +218,73 @@ export class RlWrapper {
     }
     return result;
   }
+}
+
+function syncBaseConfigMkPlatforms(workspaceRoot: string, fallbackBasePath?: string): void {
+  const realevoConfigPath = join(workspaceRoot, '.realevo', 'config.json');
+  if (!existsSync(realevoConfigPath)) {
+    return;
+  }
+
+  try {
+    const raw = JSON.parse(readFileSync(realevoConfigPath, 'utf-8')) as {
+      base?: unknown;
+      platforms?: unknown;
+    };
+
+    const platforms = normalizePlatforms(raw.platforms);
+    if (platforms.length === 0) {
+      return;
+    }
+
+    const basePath = typeof raw.base === 'string' && raw.base.trim()
+      ? raw.base.trim()
+      : fallbackBasePath;
+    if (!basePath) {
+      return;
+    }
+
+    const configMkPath = join(basePath, 'config.mk');
+    if (!existsSync(configMkPath)) {
+      return;
+    }
+
+    const content = readFileSync(configMkPath, 'utf-8');
+    const normalizedPlatforms = platforms.join(' ');
+    const replacementLine = `PLATFORMS := ${normalizedPlatforms}`;
+    const nextContent = /^\s*PLATFORMS\s*[:?+]?=.*$/m.test(content)
+      ? content.replace(/^(\s*PLATFORMS\s*)([:?+]?=).*$/m, `$1$2 ${normalizedPlatforms}`)
+      : appendPlatformsLine(content, replacementLine);
+
+    if (nextContent !== content) {
+      writeFileSync(configMkPath, nextContent, 'utf-8');
+    }
+  } catch {
+    // 同步失败不影响 rl-workspace 原始执行结果，保持 best-effort。
+  }
+}
+
+function normalizePlatforms(platforms: unknown): string[] {
+  if (!Array.isArray(platforms)) {
+    return [];
+  }
+
+  const deduped = new Set<string>();
+  for (const platform of platforms) {
+    if (typeof platform !== 'string') continue;
+    const normalized = platform.trim();
+    if (!normalized) continue;
+    deduped.add(normalized);
+  }
+  return [...deduped];
+}
+
+function appendPlatformsLine(content: string, platformsLine: string): string {
+  const eol = content.includes('\r\n') ? '\r\n' : '\n';
+  if (content.length === 0) {
+    return `${platformsLine}${eol}`;
+  }
+  return content.endsWith('\n')
+    ? `${content}${platformsLine}${eol}`
+    : `${content}${eol}${platformsLine}${eol}`;
 }

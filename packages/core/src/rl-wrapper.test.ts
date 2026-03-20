@@ -3,6 +3,9 @@ import { executeRlCommand, RlWrapper } from './rl-wrapper.js';
 import { ProgressReporter } from './progress-reporter.js';
 import { spawn } from 'child_process';
 import { EventEmitter } from 'events';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs';
+import { join } from 'path';
+import { tmpdir } from 'os';
 
 vi.mock('child_process');
 
@@ -133,6 +136,7 @@ describe('RlWrapper', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     progressReporter = new ProgressReporter();
+    progressReporter.on('error', () => {});
   });
 
   it('should call initWorkspace with correct rl-workspace command and = args', async () => {
@@ -294,5 +298,79 @@ describe('RlWrapper', () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toBe('权限不足');
+  });
+
+  it('should sync base config.mk PLATFORMS from .realevo/config.json after initWorkspace', async () => {
+    const workspaceRoot = mkdtempSync(join(tmpdir(), 'sydev-rl-wrapper-'));
+    const realevoDir = join(workspaceRoot, '.realevo');
+    const basePath = join(realevoDir, 'base');
+    const configMkPath = join(basePath, 'config.mk');
+
+    mkdirSync(basePath, { recursive: true });
+    writeFileSync(join(realevoDir, 'config.json'), JSON.stringify({
+      base: basePath,
+      platforms: ['ARM64_GENERIC', 'X86_64'],
+    }), 'utf-8');
+    writeFileSync(configMkPath, 'PLATFORMS := ARM64_A53\nDEBUG_LEVEL := release\n', 'utf-8');
+
+    const mockProc = new EventEmitter() as any;
+    mockProc.stdout = new EventEmitter();
+    mockProc.stderr = new EventEmitter();
+    vi.mocked(spawn).mockReturnValue(mockProc);
+
+    const wrapper = new RlWrapper(progressReporter);
+    const promise = wrapper.initWorkspace({
+      cwd: workspaceRoot,
+      basePath,
+      platform: ['ARM64_GENERIC', 'X86_64'],
+      version: 'default',
+    });
+
+    mockProc.emit('close', 0);
+    const result = await promise;
+
+    expect(result.success).toBe(true);
+    expect(readFileSync(configMkPath, 'utf-8')).toBe(
+      'PLATFORMS := ARM64_GENERIC X86_64\nDEBUG_LEVEL := release\n'
+    );
+
+    rmSync(workspaceRoot, { recursive: true, force: true });
+  });
+
+  it('should append PLATFORMS to base config.mk when it is missing', async () => {
+    const workspaceRoot = mkdtempSync(join(tmpdir(), 'sydev-rl-wrapper-'));
+    const realevoDir = join(workspaceRoot, '.realevo');
+    const basePath = join(realevoDir, 'base');
+    const configMkPath = join(basePath, 'config.mk');
+
+    mkdirSync(basePath, { recursive: true });
+    writeFileSync(join(realevoDir, 'config.json'), JSON.stringify({
+      base: basePath,
+      platforms: ['ARM64_GENERIC', 'X86_64'],
+    }), 'utf-8');
+    writeFileSync(configMkPath, 'DEBUG_LEVEL := release\n', 'utf-8');
+
+    const mockProc = new EventEmitter() as any;
+    mockProc.stdout = new EventEmitter();
+    mockProc.stderr = new EventEmitter();
+    vi.mocked(spawn).mockReturnValue(mockProc);
+
+    const wrapper = new RlWrapper(progressReporter);
+    const promise = wrapper.initWorkspace({
+      cwd: workspaceRoot,
+      basePath,
+      platform: ['ARM64_GENERIC', 'X86_64'],
+      version: 'default',
+    });
+
+    mockProc.emit('close', 0);
+    const result = await promise;
+
+    expect(result.success).toBe(true);
+    expect(readFileSync(configMkPath, 'utf-8')).toBe(
+      'DEBUG_LEVEL := release\nPLATFORMS := ARM64_GENERIC X86_64\n'
+    );
+
+    rmSync(workspaceRoot, { recursive: true, force: true });
   });
 });
