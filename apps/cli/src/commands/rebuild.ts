@@ -48,6 +48,7 @@ export const rebuildCommand = new Command('rebuild')
       runner.ensureMakefile();
       runner.on('progress', (event: BuildProgressEvent) => {
         if (event.type === 'stdout-line') process.stdout.write(event.line + '\n');
+        else if (event.type === 'stderr-line') process.stderr.write(event.line + '\n');
         else if (event.type === 'warning') console.log(chalk.yellow('⚠ ' + event.message));
       });
       const result = await runner.rebuildOne(found, { quiet: opts.quiet, extraArgs });
@@ -88,6 +89,7 @@ export const rebuildCommand = new Command('rebuild')
     let failedCount = 0;
     runner.on('progress', (event: BuildProgressEvent) => {
       if (event.type === 'stdout-line') process.stdout.write(event.line + '\n');
+      else if (event.type === 'stderr-line') process.stderr.write(event.line + '\n');
       else if (event.type === 'warning') console.log(chalk.yellow('⚠ ' + event.message));
     });
 

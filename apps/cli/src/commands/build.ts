@@ -46,6 +46,7 @@ export const buildCommand = new Command('build')
       runner.ensureMakefile();
       runner.on('progress', (event: BuildProgressEvent) => {
         if (event.type === 'stdout-line') process.stdout.write(event.line + '\n');
+        else if (event.type === 'stderr-line') process.stderr.write(event.line + '\n');
         else if (event.type === 'warning') console.log(chalk.yellow('\u26a0 ' + event.message));
       });
 
@@ -104,6 +105,7 @@ export const buildCommand = new Command('build')
     let failedCount = 0;
     runner.on('progress', (event: BuildProgressEvent) => {
       if (event.type === 'stdout-line') process.stdout.write(event.line + '\n');
+      else if (event.type === 'stderr-line') process.stderr.write(event.line + '\n');
       else if (event.type === 'warning') console.log(chalk.yellow('\u26a0 ' + event.message));
     });
     for (const item of selectedItems) {

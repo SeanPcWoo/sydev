@@ -40,6 +40,7 @@ export const cleanCommand = new Command('clean')
       runner.ensureMakefile();
       runner.on('progress', (event: BuildProgressEvent) => {
         if (event.type === 'stdout-line') process.stdout.write(event.line + '\n');
+        else if (event.type === 'stderr-line') process.stderr.write(event.line + '\n');
       });
       const result = await runner.cleanOne(found, { quiet: opts.quiet, extraArgs });
       if (result.success) {
@@ -79,6 +80,7 @@ export const cleanCommand = new Command('clean')
     let failedCount = 0;
     runner.on('progress', (event: BuildProgressEvent) => {
       if (event.type === 'stdout-line') process.stdout.write(event.line + '\n');
+      else if (event.type === 'stderr-line') process.stderr.write(event.line + '\n');
     });
 
     for (const item of selected) {

@@ -46,9 +46,95 @@ export type BuildProgressEvent =
       line: string;
     }
   | {
+      type: 'stderr-line';
+      name: string;
+      line: string;
+    }
+  | {
       type: 'warning';
       message: string;
     };
+
+function normalizeOutputLine(line: string): string {
+  return line.replace(/\r$/, '').trim();
+}
+
+function isWrapperErrorLine(line: string, makefilePath: string): boolean {
+  const normalizedLine = line.replace(/\\/g, '/');
+  const normalizedMakefilePath = makefilePath.replace(/\\/g, '/');
+  return normalizedLine.includes(normalizedMakefilePath) || normalizedLine.includes('.sydev/Makefile');
+}
+
+function scoreErrorLine(line: string, makefilePath: string): number {
+  if (!line) return 0;
+
+  const wrapperLine = isWrapperErrorLine(line, makefilePath);
+
+  if (/.+:\d+(?::\d+)?:\s*(?:fatal\s+)?error:/i.test(line)) {
+    return wrapperLine ? 40 : 400;
+  }
+
+  if (/\bundefined reference to\b/i.test(line)) {
+    return 360;
+  }
+
+  if (/\bmultiple definition of\b/i.test(line)) {
+    return 350;
+  }
+
+  if (/\bld(?:\.[\w-]+)?:\s+.*\b(?:cannot find|error)\b/i.test(line)) {
+    return 340;
+  }
+
+  if (/\bcollect2: error:/i.test(line)) {
+    return 330;
+  }
+
+  if (/\bNo rule to make target\b/i.test(line)) {
+    return wrapperLine ? 60 : 320;
+  }
+
+  if (/\bNo such file or directory\b/i.test(line)) {
+    return wrapperLine ? 60 : 310;
+  }
+
+  if (/\berror[:\s]/i.test(line) || /错误|失败|没有那个文件/i.test(line)) {
+    return wrapperLine ? 50 : 220;
+  }
+
+  if (/^make(?:\[\d+\])?: \*\*\*/i.test(line)) {
+    return wrapperLine ? 40 : 180;
+  }
+
+  return 0;
+}
+
+export function extractBuildErrorLines(output: string, makefilePath: string): string[] {
+  const candidates = output
+    .split('\n')
+    .map(normalizeOutputLine)
+    .map((line, index) => ({ line, index, score: scoreErrorLine(line, makefilePath) }))
+    .filter((item) => item.score > 0);
+
+  if (candidates.length === 0) {
+    return [];
+  }
+
+  const deduped: typeof candidates = [];
+  const seen = new Set<string>();
+  for (const candidate of candidates) {
+    if (seen.has(candidate.line)) continue;
+    seen.add(candidate.line);
+    deduped.push(candidate);
+  }
+
+  deduped.sort((a, b) => b.score - a.score || a.index - b.index);
+
+  const preferred = deduped.filter((item) => !isWrapperErrorLine(item.line, makefilePath));
+  const lines = preferred.length > 0 ? preferred : deduped;
+
+  return lines.slice(0, 10).map((item) => item.line);
+}
 
 export class BuildRunner extends EventEmitter {
   private basePath: string | undefined;
@@ -392,10 +478,7 @@ export class BuildRunner extends EventEmitter {
 
   /** 提取 error 行 */
   private extractErrorLines(output: string): string[] {
-    return output
-      .split('\n')
-      .filter((line) => /error[:\s]|错误|失败|没有那个文件/i.test(line))
-      .slice(0, 10);
+    return extractBuildErrorLines(output, this.makefilePath);
   }
 
   /** 执行指定 Makefile target */
@@ -416,22 +499,58 @@ export class BuildRunner extends EventEmitter {
 
       let stdoutBuf = '';
       let stderrBuf = '';
+      let stdoutPending = '';
+      let stderrPending = '';
+
+      const emitLines = (
+        text: string,
+        eventType: 'stdout-line' | 'stderr-line',
+        pending: 'stdoutPending' | 'stderrPending'
+      ) => {
+        if (quiet) return;
+
+        const combined = (pending === 'stdoutPending' ? stdoutPending : stderrPending) + text;
+        const parts = combined.split('\n');
+        const nextPending = parts.pop() ?? '';
+
+        if (pending === 'stdoutPending') stdoutPending = nextPending;
+        else stderrPending = nextPending;
+
+        for (const rawLine of parts) {
+          const line = rawLine.replace(/\r$/, '');
+          if (!line) continue;
+          const event: BuildProgressEvent = { type: eventType, name: project.name, line };
+          this.emit('progress', event);
+        }
+      };
+
+      const flushPendingLine = (eventType: 'stdout-line' | 'stderr-line', pending: 'stdoutPending' | 'stderrPending') => {
+        if (quiet) return;
+
+        const line = pending === 'stdoutPending' ? stdoutPending : stderrPending;
+        if (!line) return;
+
+        const event: BuildProgressEvent = {
+          type: eventType,
+          name: project.name,
+          line: line.replace(/\r$/, ''),
+        };
+        this.emit('progress', event);
+
+        if (pending === 'stdoutPending') stdoutPending = '';
+        else stderrPending = '';
+      };
 
       proc.stdout.on('data', (chunk: Buffer) => {
         const text = chunk.toString();
         stdoutBuf += text;
-        if (!quiet) {
-          for (const line of text.split('\n')) {
-            if (line) {
-              const event: BuildProgressEvent = { type: 'stdout-line', name: project.name, line };
-              this.emit('progress', event);
-            }
-          }
-        }
+        emitLines(text, 'stdout-line', 'stdoutPending');
       });
 
       proc.stderr.on('data', (chunk: Buffer) => {
-        stderrBuf += chunk.toString();
+        const text = chunk.toString();
+        stderrBuf += text;
+        emitLines(text, 'stderr-line', 'stderrPending');
       });
 
       const sigintHandler = () => {
@@ -442,6 +561,8 @@ export class BuildRunner extends EventEmitter {
 
       proc.on('close', (code) => {
         process.removeListener('SIGINT', sigintHandler);
+        flushPendingLine('stdout-line', 'stdoutPending');
+        flushPendingLine('stderr-line', 'stderrPending');
         const durationMs = Date.now() - startTime;
         const success = code === 0;
 
