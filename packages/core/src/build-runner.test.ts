@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { EventEmitter } from 'events';
-import { mkdtempSync, mkdirSync, rmSync } from 'fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { spawn } from 'child_process';
@@ -90,5 +90,141 @@ describe('BuildRunner', () => {
       ['-f', join(workspaceRoot, '.sydev', 'Makefile'), 'demo'],
       { cwd: workspaceRoot, stdio: ['ignore', 'pipe', 'pipe'] }
     );
+  });
+
+  it('生成的 Makefile 使用 rl-build，并且不再改写 config.mk', () => {
+    const realevoDir = join(workspaceRoot, '.realevo');
+    const basePath = join(realevoDir, 'base');
+    const demoConfigMk = join(workspaceRoot, 'demo', 'config.mk');
+    mkdirSync(realevoDir, { recursive: true });
+    mkdirSync(basePath, { recursive: true });
+    writeFileSync(join(realevoDir, 'config.json'), JSON.stringify({ base: basePath }), 'utf-8');
+    writeFileSync(join(basePath, 'Makefile'), 'all:\n\t@echo base\n', 'utf-8');
+    writeFileSync(demoConfigMk, 'SYLIXOS_BASE_PATH = /tmp/keep-me\nPLATFORM_NAME = OLD\n', 'utf-8');
+
+    const project = { name: 'demo', path: join(workspaceRoot, 'demo') };
+    const runner = new BuildRunner([project], workspaceRoot);
+    runner.ensureMakefile();
+
+    const makefile = readFileSync(join(workspaceRoot, '.sydev', 'Makefile'), 'utf-8');
+    expect(makefile).toContain('bear --append -- rl-build build --project=base $(RL_BUILD_ARGS)');
+    expect(makefile).toContain('bear --append -- rl-build build --project=demo $(RL_BUILD_ARGS)');
+    expect(makefile).toContain('rl-build clean --project=demo $(RL_CLEAN_ARGS)');
+    expect(readFileSync(demoConfigMk, 'utf-8')).toBe('SYLIXOS_BASE_PATH = /tmp/keep-me\nPLATFORM_NAME = OLD\n');
+  });
+
+  it('增量更新时切换到 rl-build 并保留自定义 cp target', () => {
+    const project = { name: 'demo', path: join(workspaceRoot, 'demo') };
+    const runner = new BuildRunner([project], workspaceRoot);
+    mkdirSync(join(workspaceRoot, '.sydev'), { recursive: true });
+    writeFileSync(join(workspaceRoot, '.sydev', 'Makefile'), [
+      '# SylixOS Workspace Makefile',
+      '# 由 sydev 自动生成/更新',
+      '# __ 开头的 target 为用户编译模板，sydev 不会修改',
+      '',
+      `export WORKSPACE_demo = ${project.path}`,
+      '',
+      '# ─── 工程 Targets ───────────────────────────────────────────────',
+      '',
+      '.PHONY: demo clean-demo rebuild-demo cp-demo',
+      '',
+      '#*******************************************************************************',
+      '# demo',
+      '#*******************************************************************************',
+      'demo:',
+      `\tbear --append -- make -C ${project.path} all`,
+      '',
+      'clean-demo:',
+      `\tmake -C ${project.path} clean`,
+      '',
+      'rebuild-demo: clean-demo demo',
+      '',
+      'cp-demo:',
+      '\tcp /tmp/custom.so /tmp/destination',
+      '',
+      '# ─── 编译模板（__ 开头，可自行修改） ─────────────────────────────',
+      'SELF := $(firstword $(MAKEFILE_LIST))',
+      '',
+      '__demo:',
+      '\t$(MAKE) -f $(SELF) demo',
+      '',
+    ].join('\n'), 'utf-8');
+
+    runner.ensureMakefile();
+
+    const makefile = readFileSync(join(workspaceRoot, '.sydev', 'Makefile'), 'utf-8');
+    expect(makefile).toContain('bear --append -- rl-build build --project=demo $(RL_BUILD_ARGS)');
+    expect(makefile).toContain('rl-build clean --project=demo $(RL_CLEAN_ARGS)');
+    expect(makefile).toContain('\tcp /tmp/custom.so /tmp/destination');
+    expect(makefile).toContain('__demo:');
+  });
+
+  it('将 -j 参数转换为 rl-build 的 --parallel 参数', async () => {
+    const mockProc = createMockProcess();
+    vi.mocked(spawn).mockReturnValue(mockProc);
+
+    const project = { name: 'demo', path: join(workspaceRoot, 'demo') };
+    const runner = new BuildRunner([project], workspaceRoot);
+    runner.ensureMakefile();
+
+    const promise = runner.buildOne(project, { extraArgs: ['-j4'] });
+    mockProc.emit('close', 0);
+    await promise;
+
+    expect(spawn).toHaveBeenCalledWith(
+      'make',
+      ['-f', join(workspaceRoot, '.sydev', 'Makefile'), 'demo', 'RL_BUILD_ARGS=--parallel=4'],
+      { cwd: workspaceRoot, stdio: ['ignore', 'pipe', 'pipe'] }
+    );
+  });
+
+  it('build 前会把工程 config.mk 里的 SYLIXOS_BASE_PATH 同步为当前 base 路径', async () => {
+    const mockProc = createMockProcess();
+    vi.mocked(spawn).mockReturnValue(mockProc);
+
+    const realevoDir = join(workspaceRoot, '.realevo');
+    const basePath = join(realevoDir, 'base');
+    const configMkPath = join(workspaceRoot, 'demo', 'config.mk');
+    mkdirSync(basePath, { recursive: true });
+    writeFileSync(join(realevoDir, 'config.json'), JSON.stringify({ base: basePath }), 'utf-8');
+    writeFileSync(configMkPath, 'SYLIXOS_BASE_PATH = /tmp/wrong\nDEBUG_LEVEL := release\n', 'utf-8');
+
+    const project = { name: 'demo', path: join(workspaceRoot, 'demo') };
+    const runner = new BuildRunner([project], workspaceRoot);
+    runner.ensureMakefile();
+
+    const promise = runner.buildOne(project);
+
+    expect(readFileSync(configMkPath, 'utf-8')).toBe(
+      `SYLIXOS_BASE_PATH = ${basePath}\nDEBUG_LEVEL := release\n`
+    );
+
+    mockProc.emit('close', 0);
+    await promise;
+  });
+
+  it('clean 前会在工程 config.mk 中追加缺失的 SYLIXOS_BASE_PATH', async () => {
+    const mockProc = createMockProcess();
+    vi.mocked(spawn).mockReturnValue(mockProc);
+
+    const realevoDir = join(workspaceRoot, '.realevo');
+    const basePath = join(realevoDir, 'base');
+    const configMkPath = join(workspaceRoot, 'demo', 'config.mk');
+    mkdirSync(basePath, { recursive: true });
+    writeFileSync(join(realevoDir, 'config.json'), JSON.stringify({ base: basePath }), 'utf-8');
+    writeFileSync(configMkPath, 'DEBUG_LEVEL := debug\n', 'utf-8');
+
+    const project = { name: 'demo', path: join(workspaceRoot, 'demo') };
+    const runner = new BuildRunner([project], workspaceRoot);
+    runner.ensureMakefile();
+
+    const promise = runner.cleanOne(project);
+
+    expect(readFileSync(configMkPath, 'utf-8')).toBe(
+      `DEBUG_LEVEL := debug\nSYLIXOS_BASE_PATH = ${basePath}\n`
+    );
+
+    mockProc.emit('close', 0);
+    await promise;
   });
 });

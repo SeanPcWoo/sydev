@@ -118,9 +118,11 @@ sydev template apply sydev-config.json --cwd /path/to/new-ws --base-path /path/t
 示例：
 
 ```makefile
+SELF := $(firstword $(MAKEFILE_LIST))
+
 __demo:
-	make libcpu
-	make libnet
+	$(MAKE) -f $(SELF) libcpu
+	$(MAKE) -f $(SELF) libnet
 ```
 
 执行：
@@ -176,6 +178,8 @@ workspace/
 
 - `build` / `clean` / `rebuild` / `upload` 默认把当前目录视为 workspace 根目录
 - `project list`、`build`、`clean`、`rebuild` 等命令当前通过“一级子目录同时包含 `.project` 和 `Makefile`”来识别项目
+- `.sydev/Makefile` 的工程 target 内部调用 `rl-build`，例如 `bear --append -- rl-build build --project=<name>`
+- `build` / `clean` / `rebuild` 执行前，会先把目标工程 `config.mk` 里的 `SYLIXOS_BASE_PATH` 同步成当前 workspace 的 base 路径
 - `upload` / `device list` 会优先读取 `.realevo/devicelist.json`，若不存在再回退到 `.realevo/config.json`
 
 ## 更新文档的原则

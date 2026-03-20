@@ -25,13 +25,13 @@ function printErrorSummary(result: BuildProjectResult): void {
 export const rebuildCommand = new Command('rebuild')
   .description('重新编译 SylixOS 工程（clean + build）')
   .argument('[project]', '工程名（精确匹配目录名）')
-  .option('--quiet', '静默模式（不透传 make 输出）')
+  .option('--quiet', '静默模式（不实时透传构建输出）')
   .allowUnknownOption()
   .addHelpText('after', `
 示例:
   $ sydev rebuild                  # 交互式选择工程
   $ sydev rebuild libcpu           # 重新编译指定工程
-  $ sydev rebuild libcpu -- -j4   # 透传 make 参数
+  $ sydev rebuild libcpu -- --parallel=4   # 透传 rl-build build 参数
 `)
   .action(async (projectArg: string | undefined, opts: { quiet?: boolean }) => {
     const extraArgs = parseExtraArgs();

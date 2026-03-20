@@ -38,6 +38,7 @@ sydev template apply --help
 - 补全 `template apply` 的 JSON 文件、`--cwd`、`--base-path`、`-y` 文档
 - 补全 `workspace/project/device` 的 `--config` 用法与 JSON 结构
 - 明确 `build` 的“构建模板”和 `template` 的“配置模板”是两套不同概念
+- 补充 `.sydev/Makefile` 改为调用 `rl-build`，以及 `build` / `clean` / `rebuild` 执行前自动同步 `SYLIXOS_BASE_PATH`
 
 ## 需要记住的几个事实
 
@@ -46,6 +47,7 @@ sydev template apply --help
 - `upload` 上传多个项目或 `--all` 时必须显式传 `--device`
 - `template apply` 的 `<source>` 可以是模板 ID，也可以是 JSON 文件路径
 - `template apply` 当前直接初始化只支持 `workspace` 和 `full` 类型模板
+- `build` / `clean` / `rebuild` 执行前会先校正目标工程 `config.mk` 里的 `SYLIXOS_BASE_PATH`
 
 ## 如果你只想把命令交给别人使用
 

@@ -35,15 +35,21 @@
 - 只要传了任意业务参数，或只传了 `--config`，就会进入非交互模式
 - 对这三类命令，命令行参数优先级高于 JSON 配置文件
 
-### 透传 make 参数
+### 透传 rl-build 参数
 
-`build`、`clean`、`rebuild` 都支持：
+`build`、`clean`、`rebuild` 都支持通过 `-- <args>` 继续透传参数。
+
+常见场景：
 
 ```bash
-sydev build libcpu -- -j4
-sydev clean libcpu -- V=1
-sydev rebuild libcpu -- -j8
+sydev build libcpu -- --parallel=4
+sydev rebuild libcpu -- --parallel=8
 ```
+
+兼容说明：
+
+- `build` / `rebuild` 中常见的 `-j4`、`--jobs=4` 会自动转换成 `rl-build build --parallel=4`
+- `clean` 的透传参数会原样附加到 `rl-build clean`
 
 ### 项目识别规则
 
@@ -232,14 +238,15 @@ sydev device list
 | 选项 | 说明 |
 | --- | --- |
 | `[project]` | 项目名，或 `.sydev/Makefile` 中的用户构建模板名 |
-| `--quiet` | 静默模式，不透传 make 输出 |
-| `-- <args>` | 透传给 make 的额外参数 |
+| `--quiet` | 静默模式，不实时透传构建输出 |
+| `-- <args>` | 透传给 `rl-build build` 的额外参数 |
 
 #### 行为说明
 
 - 无参数时会弹出多选框
 - 交互模式里除了项目，还会列出 `.sydev/Makefile` 中可识别的用户构建模板
 - 指定 `project` 参数时，先按项目名匹配，找不到再按构建模板名匹配
+- 执行前会把目标工程 `config.mk` 里的 `SYLIXOS_BASE_PATH` 同步为当前 workspace 的 base 路径
 - 当前没有 `--all` 选项
 
 #### 示例
@@ -249,12 +256,13 @@ sydev build
 sydev build libcpu
 sydev build __demo
 sydev build libcpu --quiet
+sydev build libcpu -- --parallel=4
 sydev build libcpu -- -j4
 ```
 
 ### `sydev build init`
 
-生成或更新 `.sydev/Makefile`，让你可以脱离 sydev 直接使用 `make -f .sydev/Makefile <target>`。
+生成或更新 `.sydev/Makefile`，让你可以脱离 sydev 直接使用 `make -f .sydev/Makefile <target>`。工程 target 内部实际调用的是 `rl-build`。
 
 #### 选项
 
@@ -268,6 +276,7 @@ sydev build libcpu -- -j4
 sydev build init
 sydev build init --default
 make -f .sydev/Makefile libcpu
+make -f .sydev/Makefile libcpu RL_BUILD_ARGS='--parallel=4'
 ```
 
 ## clean
@@ -281,12 +290,13 @@ make -f .sydev/Makefile libcpu
 | 选项 | 说明 |
 | --- | --- |
 | `[project]` | 项目名 |
-| `--quiet` | 静默模式，不透传 make 输出 |
-| `-- <args>` | 透传给 make 的额外参数 |
+| `--quiet` | 静默模式，不实时透传命令输出 |
+| `-- <args>` | 透传给 `rl-build clean` 的额外参数 |
 
 #### 行为说明
 
 - 无参数时弹出项目多选
+- 执行前会把目标工程 `config.mk` 里的 `SYLIXOS_BASE_PATH` 同步为当前 workspace 的 base 路径
 - 当前没有 `--all`
 
 #### 示例
@@ -294,7 +304,6 @@ make -f .sydev/Makefile libcpu
 ```bash
 sydev clean
 sydev clean libcpu
-sydev clean libcpu -- -j4
 ```
 
 ## rebuild
@@ -308,12 +317,13 @@ sydev clean libcpu -- -j4
 | 选项 | 说明 |
 | --- | --- |
 | `[project]` | 项目名 |
-| `--quiet` | 静默模式，不透传 make 输出 |
-| `-- <args>` | 透传给 make 的额外参数 |
+| `--quiet` | 静默模式，不实时透传构建输出 |
+| `-- <args>` | 透传给 `rl-build build` 的额外参数 |
 
 #### 行为说明
 
 - 无参数时弹出项目多选
+- 执行前会把目标工程 `config.mk` 里的 `SYLIXOS_BASE_PATH` 同步为当前 workspace 的 base 路径
 - 当前没有 `--all`
 
 #### 示例
@@ -321,6 +331,7 @@ sydev clean libcpu -- -j4
 ```bash
 sydev rebuild
 sydev rebuild libcpu
+sydev rebuild libcpu -- --parallel=4
 sydev rebuild libcpu -- -j4
 ```
 

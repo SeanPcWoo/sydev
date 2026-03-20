@@ -17,13 +17,12 @@ function formatDuration(ms: number): string {
 export const cleanCommand = new Command('clean')
   .description('清理 SylixOS 工程')
   .argument('[project]', '工程名（精确匹配目录名）')
-  .option('--quiet', '静默模式（不透传 make 输出）')
+  .option('--quiet', '静默模式（不实时透传命令输出）')
   .allowUnknownOption()
   .addHelpText('after', `
 示例:
   $ sydev clean                  # 交互式选择工程
   $ sydev clean libcpu           # 清理指定工程
-  $ sydev clean libcpu -- -j4   # 透传 make 参数
 `)
   .action(async (projectArg: string | undefined, opts: { quiet?: boolean }) => {
     const extraArgs = parseExtraArgs();

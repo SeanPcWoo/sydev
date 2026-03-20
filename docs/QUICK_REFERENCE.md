@@ -16,6 +16,7 @@ sydev device add
 ```bash
 sydev build
 sydev build libcpu
+sydev build libcpu -- --parallel=4
 sydev build __demo
 sydev build init
 sydev clean libcpu
@@ -59,6 +60,8 @@ sydev template apply --help
 
 - `build` / `clean` / `rebuild` 当前没有 `--all`
 - `build` 可以执行 `.sydev/Makefile` 中的构建模板，如 `sydev build __demo`
+- `.sydev/Makefile` 的工程 target 内部调用 `rl-build`
+- `build` / `clean` / `rebuild` 执行前会自动同步目标工程 `config.mk` 里的 `SYLIXOS_BASE_PATH`
 - `template` 管理的是配置模板，不是构建模板
 - `upload` 上传多个项目时必须显式传 `--device`
 - `template apply` 的 `<source>` 可以是模板 ID，也可以是 JSON 文件路径

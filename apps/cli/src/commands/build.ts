@@ -25,7 +25,7 @@ function printErrorSummary(result: BuildProjectResult): void {
 export const buildCommand = new Command('build')
   .description('\u7f16\u8bd1 SylixOS \u5de5\u7a0b')
   .argument('[project]', '\u5de5\u7a0b\u540d\uff08\u7cbe\u786e\u5339\u914d\u76ee\u5f55\u540d\uff09')
-  .option('--quiet', '\u9759\u9ed8\u6a21\u5f0f\uff08\u4e0d\u900f\u4f20 make \u8f93\u51fa\uff09')
+  .option('--quiet', '\u9759\u9ed8\u6a21\u5f0f\uff08\u4e0d\u5b9e\u65f6\u900f\u4f20\u6784\u5efa\u8f93\u51fa\uff09')
   .allowUnknownOption()
   .addHelpText('after', `
 \u793a\u4f8b:
@@ -33,7 +33,7 @@ export const buildCommand = new Command('build')
   $ sydev build libcpu           # \u7f16\u8bd1\u6307\u5b9a\u5de5\u7a0b
   $ sydev build init             # \u751f\u6210/\u66f4\u65b0 .sydev/Makefile
   $ sydev build init --default   # \u4ece\u5934\u91cd\u65b0\u751f\u6210 Makefile
-  $ sydev build libcpu -- -j4   # \u900f\u4f20 make \u53c2\u6570
+  $ sydev build libcpu -- --parallel=4   # \u900f\u4f20 rl-build build \u53c2\u6570
 `)
   .action(async (projectArg: string | undefined, opts: { quiet?: boolean }) => {
     const extraArgs = parseExtraArgs();
@@ -135,7 +135,7 @@ export const buildCommand = new Command('build')
 // build init \u5b50\u547d\u4ee4
 buildCommand
   .command('init')
-  .description('\u751f\u6210/\u66f4\u65b0 .sydev/Makefile\uff08\u8131\u79bb sydev \u53ef\u76f4\u63a5 make \u7f16\u8bd1\uff09')
+  .description('\u751f\u6210/\u66f4\u65b0 .sydev/Makefile\uff08\u5de5\u7a0b target \u5185\u90e8\u8c03\u7528 rl-build\uff09')
   .option('--default', '\u4ece\u5934\u91cd\u65b0\u751f\u6210 Makefile\uff08\u8986\u76d6\u7528\u6237\u4fee\u6539\uff09')
   .action(async (opts: { default?: boolean }) => {
     const scanner = new WorkspaceScanner(process.cwd());
@@ -147,5 +147,5 @@ buildCommand
     const runner = new BuildRunner(projects, process.cwd());
     runner.ensureMakefile(opts.default);
     console.log(chalk.green('\u2713 Makefile \u5df2\u751f\u6210: .sydev/Makefile'));
-    console.log(chalk.dim(`  \u5305\u542b ${projects.length} \u4e2a\u5de5\u7a0b target\uff0c\u53ef\u76f4\u63a5\u8fd0\u884c make -f .sydev/Makefile <\u5de5\u7a0b\u540d> \u7f16\u8bd1`));
+    console.log(chalk.dim(`  \u5305\u542b ${projects.length} \u4e2a\u5de5\u7a0b target\uff0c\u53ef\u76f4\u63a5\u8fd0\u884c make -f .sydev/Makefile <\u5de5\u7a0b\u540d>\uff08\u5185\u90e8\u4f7f\u7528 rl-build\uff09`));
   });

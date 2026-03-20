@@ -5,7 +5,7 @@ import { join } from 'path';
 import type { ScannedProject } from './workspace-scanner.js';
 
 export interface BuildOptions {
-  extraArgs?: string[];  // -- 之后的自定义 make 参数
+  extraArgs?: string[];  // -- 之后透传给 rl-build / Makefile 模板的自定义参数
   quiet?: boolean;       // 单工程静默模式（不透传 stdout-line 事件）
   verbose?: boolean;     // 批量模式详细输出（透传每个工程 stdout）
 }
@@ -57,6 +57,59 @@ export type BuildProgressEvent =
 
 function normalizeOutputLine(line: string): string {
   return line.replace(/\r$/, '').trim();
+}
+
+function shellEscapeArg(arg: string): string {
+  if (/^[A-Za-z0-9_./:=+-]+$/.test(arg)) {
+    return arg;
+  }
+
+  return `'${arg.replace(/'/g, `'\\''`)}'`;
+}
+
+function normalizeBuildExtraArgs(extraArgs: string[]): string[] {
+  const normalized: string[] = [];
+
+  for (let i = 0; i < extraArgs.length; i++) {
+    const arg = extraArgs[i];
+
+    if (/^-j\d+$/.test(arg)) {
+      normalized.push(`--parallel=${arg.slice(2)}`);
+      continue;
+    }
+
+    if (arg === '-j' || arg === '--jobs') {
+      const next = extraArgs[i + 1];
+      if (next && /^\d+$/.test(next)) {
+        normalized.push(`--parallel=${next}`);
+        i++;
+        continue;
+      }
+    }
+
+    if (/^--jobs=\d+$/.test(arg)) {
+      normalized.push(`--parallel=${arg.slice('--jobs='.length)}`);
+      continue;
+    }
+
+    normalized.push(arg);
+  }
+
+  return normalized;
+}
+
+function formatExtraArgsForMake(extraArgs: string[]): string {
+  return extraArgs.map(shellEscapeArg).join(' ');
+}
+
+function appendConfigLine(content: string, line: string): string {
+  const eol = content.includes('\r\n') ? '\r\n' : '\n';
+  if (content.length === 0) {
+    return `${line}${eol}`;
+  }
+  return content.endsWith('\n')
+    ? `${content}${line}${eol}`
+    : `${content}${eol}${line}${eol}`;
 }
 
 function isWrapperErrorLine(line: string, makefilePath: string): boolean {
@@ -160,28 +213,66 @@ export class BuildRunner extends EventEmitter {
     }
   }
 
+  private defaultCpSection(project: ScannedProject): string {
+    return [
+      `cp-${project.name}:`,
+      `\t# TODO: 配置产物复制路径`,
+      `\t# cp ${project.path}/Debug/${project.name}.so /path/to/destination`,
+    ].join('\n');
+  }
+
+  private extractCpSection(block: string, projectName: string): string | undefined {
+    const lines = block.split('\n');
+    const cpIndex = lines.findIndex((line) => line === `cp-${projectName}:`);
+    if (cpIndex === -1) return undefined;
+
+    const cpLines = lines.slice(cpIndex);
+    while (cpLines.length > 0 && cpLines[cpLines.length - 1] === '') {
+      cpLines.pop();
+    }
+
+    return cpLines.join('\n');
+  }
+
+  private isDefaultCpSection(cpSection: string, projectName: string): boolean {
+    const lines = cpSection.split('\n');
+    return (
+      lines.length === 3
+      && lines[0] === `cp-${projectName}:`
+      && lines[1] === '\t# TODO: 配置产物复制路径'
+      && /^\t# cp .+ \/path\/to\/destination$/.test(lines[2])
+    );
+  }
+
+  private resolveCpSection(project: ScannedProject, existingBlock?: string): string {
+    const fallback = this.defaultCpSection(project);
+    if (!existingBlock) return fallback;
+
+    const cpSection = this.extractCpSection(existingBlock, project.name);
+    if (!cpSection || this.isDefaultCpSection(cpSection, project.name)) {
+      return fallback;
+    }
+
+    return cpSection;
+  }
+
   /** 生成单个工程的 Makefile block */
-  private generateProjectBlock(project: ScannedProject): string {
+  private generateProjectBlock(project: ScannedProject, existingBlock?: string): string {
     const n = project.name;
-    const isBase = n === 'base';
     const lines: string[] = [];
     lines.push('#' + '*'.repeat(79));
     lines.push(`# ${n}`);
     lines.push('#' + '*'.repeat(79));
     lines.push(`${n}:`);
-    lines.push(isBase
-      ? `\tmake -C ${project.path} all`
-      : `\tbear --append -- make -C ${project.path} all`);
+    lines.push(`\tbear --append -- rl-build build --project=${n} $(RL_BUILD_ARGS)`);
     lines.push('');
     lines.push(`clean-${n}:`);
-    lines.push(`\tmake -C ${project.path} clean`);
+    lines.push(`\trl-build clean --project=${n} $(RL_CLEAN_ARGS)`);
     lines.push('');
     lines.push(`rebuild-${n}: clean-${n} ${n}`);
-    if (!isBase) {
+    if (n !== 'base') {
       lines.push('');
-      lines.push(`cp-${n}:`);
-      lines.push(`\t# TODO: 配置产物复制路径`);
-      lines.push(`\t# cp ${project.path}/Debug/${n}.so /path/to/destination`);
+      lines.push(this.resolveCpSection(project, existingBlock));
     }
     return lines.join('\n');
   }
@@ -346,134 +437,40 @@ export class BuildRunner extends EventEmitter {
     // 不存在或 --default：全新生成
     if (!existsSync(this.makefilePath) || forceDefault) {
       writeFileSync(this.makefilePath, this.generateMakefile(), 'utf-8');
-      this.patchAllConfigMk();
       return;
     }
 
-    // 增量更新：解析现有文件结构
+    // 增量更新：保留用户模板区和自定义 cp target，其余工程 target 按当前模板重建
     const existing = readFileSync(this.makefilePath, 'utf-8');
     const { projectBlocks, projectOrder, tailContent } = this.parseMakefileStructured(existing);
-    const currentNames = new Set(this.projects.map(p => p.name));
-    const existingNames = new Set(projectOrder);
 
-    const added = this.projects.filter(p => !existingNames.has(p.name));
-    const removed = projectOrder.filter(n => !currentNames.has(n));
+    const projectsByName = new Map(this.projects.map((project) => [project.name, project]));
+    const currentNames = new Set(projectsByName.keys());
 
-    if (added.length === 0 && removed.length === 0) {
-      // 无增删：只更新头部（变量、.PHONY）
-      let updated = existing;
-      for (const project of this.projects) {
-        const varName = `WORKSPACE_${project.name.replace(/-/g, '_')}`;
-        const re = new RegExp(`^export ${varName} = .*$`, 'm');
-        if (re.test(updated)) {
-          updated = updated.replace(re, `export ${varName} = ${project.path}`);
-        }
+    // 构建最终工程顺序：保留已有顺序，新工程追加到末尾
+    const finalOrder: string[] = projectOrder.filter((name) => currentNames.has(name));
+    for (const project of this.projects) {
+      if (!finalOrder.includes(project.name)) {
+        finalOrder.push(project.name);
       }
-      if (this.basePath) {
-        const baseRe = /^export SYLIXOS_BASE_PATH = .*$/m;
-        if (baseRe.test(updated)) {
-          updated = updated.replace(baseRe, `export SYLIXOS_BASE_PATH = ${this.basePath}`);
-        }
-      }
-      if (updated !== existing) {
-        writeFileSync(this.makefilePath, updated, 'utf-8');
-      }
-      this.patchAllConfigMk();
-      return;
     }
 
-    // 有增删：精确修改，保留用户对已有 block 的修改
-    // 1. 删除被移除的工程 block
-    for (const name of removed) {
-      projectBlocks.delete(name);
-    }
-
-    // 2. 构建最终工程顺序：保留已有顺序，新工程追加到末尾
-    const finalOrder: string[] = projectOrder.filter(n => currentNames.has(n));
-    for (const p of added) {
-      finalOrder.push(p.name);
-      projectBlocks.set(p.name, this.generateProjectBlock(p));
-    }
-
-    // 3. 重新生成头部（变量和 .PHONY 需要反映最新工程列表）
+    // 重新生成头部（变量和 .PHONY 需要反映最新工程列表）
     const header = this.generateHeader();
 
-    // 4. 拼接：头部 + 工程 blocks + 尾部（用户模板区）
+    // 拼接：头部 + 工程 blocks + 尾部（用户模板区）
     const parts: string[] = [header];
     for (const name of finalOrder) {
+      const project = projectsByName.get(name);
+      if (!project) continue;
       parts.push('');
-      parts.push(projectBlocks.get(name)!);
+      parts.push(this.generateProjectBlock(project, projectBlocks.get(name)));
     }
     if (tailContent.trim()) {
       parts.push('\n' + tailContent);
     }
 
     writeFileSync(this.makefilePath, parts.join('\n') + '\n', 'utf-8');
-
-    // 只 patch 新增工程的 config.mk
-    for (const p of added) {
-      if (p.name !== 'base') {
-        this.patchConfigMk(p);
-      }
-    }
-  }
-
-  /** 遍历所有非 base 工程，更新 config.mk */
-  patchAllConfigMk(): void {
-    for (const project of this.projects) {
-      if (project.name !== 'base') {
-        this.patchConfigMk(project);
-      }
-    }
-  }
-
-  /** 更新指定工程 config.mk 中的 SYLIXOS_BASE_PATH 和 PLATFORM_NAME */
-  patchConfigMkFor(project: ScannedProject): void {
-    this.patchConfigMk(project);
-  }
-
-  /** 更新工程 config.mk 中的 SYLIXOS_BASE_PATH 和 PLATFORM_NAME */
-  private patchConfigMk(project: ScannedProject): void {
-    if (!this.basePath) return;
-    const configMkPath = join(project.path, 'config.mk');
-    let content: string;
-    try {
-      content = readFileSync(configMkPath, 'utf-8');
-    } catch {
-      return;
-    }
-    // 更新 SYLIXOS_BASE_PATH
-    let updated = content.replace(
-      /^(SYLIXOS_BASE_PATH\s*[?:]?=\s*).*$/m,
-      `$1${this.basePath}`
-    );
-
-    // 检查 base 的 config.mk 是否启用了 MULTI_PLATFORM_BUILD
-    const baseConfigMkPath = join(this.basePath, 'config.mk');
-    try {
-      const baseContent = readFileSync(baseConfigMkPath, 'utf-8');
-      const multiMatch = baseContent.match(/^MULTI_PLATFORM_BUILD\s*[?:]?=\s*(.+)$/m);
-      if (multiMatch && multiMatch[1].trim().toLowerCase() === 'yes') {
-        const platformsMatch = baseContent.match(/^PLATFORMS\s*[?:]?=\s*(.+)$/m);
-        if (platformsMatch) {
-          const platformsValue = platformsMatch[1].trim();
-          const platformRe = /^PLATFORM_NAME\s*[?:]?=\s*/m;
-          if (!platformRe.test(updated)) {
-            // PLATFORM_NAME 不存在，在 SYLIXOS_BASE_PATH 行后插入
-            updated = updated.replace(
-              /^(SYLIXOS_BASE_PATH\s*[?:]?=\s*.*)$/m,
-              `$1\nPLATFORM_NAME = ${platformsValue}`
-            );
-          }
-        }
-      }
-    } catch {
-      // base config.mk 不存在，跳过
-    }
-
-    if (updated !== content) {
-      writeFileSync(configMkPath, updated, 'utf-8');
-    }
   }
 
   /** 提取 error 行 */
@@ -481,15 +478,79 @@ export class BuildRunner extends EventEmitter {
     return extractBuildErrorLines(output, this.makefilePath);
   }
 
+  /** 在执行前校正工程 config.mk 里的 SYLIXOS_BASE_PATH */
+  private syncProjectBasePath(project: ScannedProject): void {
+    if (!this.basePath) {
+      return;
+    }
+
+    const configMkPath = join(project.path, 'config.mk');
+    if (!existsSync(configMkPath)) {
+      return;
+    }
+
+    const content = readFileSync(configMkPath, 'utf-8');
+    const nextContent = /^\s*SYLIXOS_BASE_PATH\s*[:?+]?=.*$/m.test(content)
+      ? content.replace(/^(\s*SYLIXOS_BASE_PATH\s*)([:?+]?=).*$/m, `$1$2 ${this.basePath}`)
+      : appendConfigLine(content, `SYLIXOS_BASE_PATH = ${this.basePath}`);
+
+    if (nextContent !== content) {
+      writeFileSync(configMkPath, nextContent, 'utf-8');
+    }
+  }
+
+  private syncBasePathBeforeTarget(project: ScannedProject, targetType: 'build' | 'clean' | 'rebuild' | 'template'): void {
+    if (targetType === 'template') {
+      for (const currentProject of this.projects) {
+        this.syncProjectBasePath(currentProject);
+      }
+      return;
+    }
+
+    this.syncProjectBasePath(project);
+  }
+
   /** 执行指定 Makefile target */
-  private runTarget(project: ScannedProject, target: string, options?: BuildOptions): Promise<BuildProjectResult> {
+  private runTarget(
+    project: ScannedProject,
+    target: string,
+    targetType: 'build' | 'clean' | 'rebuild' | 'template',
+    options?: BuildOptions
+  ): Promise<BuildProjectResult> {
     const args = ['-f', this.makefilePath, target];
+
     if (options?.extraArgs && options.extraArgs.length > 0) {
-      args.push(...options.extraArgs);
+      const extraArgs = targetType === 'build' || targetType === 'rebuild' || targetType === 'template'
+        ? normalizeBuildExtraArgs(options.extraArgs)
+        : options.extraArgs;
+      const formattedArgs = formatExtraArgsForMake(extraArgs);
+
+      if (formattedArgs) {
+        if (targetType === 'build' || targetType === 'rebuild' || targetType === 'template') {
+          args.push(`RL_BUILD_ARGS=${formattedArgs}`);
+        } else if (targetType === 'clean') {
+          args.push(`RL_CLEAN_ARGS=${formattedArgs}`);
+        }
+      }
     }
 
     const startTime = Date.now();
     const quiet = options?.quiet ?? false;
+
+    try {
+      this.syncBasePathBeforeTarget(project, targetType);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return Promise.resolve({
+        name: project.name,
+        success: false,
+        durationMs: Date.now() - startTime,
+        stdout: '',
+        stderr: message,
+        errorSummary: message,
+        errorLines: [message],
+      });
+    }
 
     return new Promise((resolve, reject) => {
       const proc = spawn('make', args, {
@@ -593,18 +654,17 @@ export class BuildRunner extends EventEmitter {
 
   /** clean 单个工程 */
   async cleanOne(project: ScannedProject, options?: BuildOptions): Promise<BuildProjectResult> {
-    return this.runTarget(project, `clean-${project.name}`, options);
+    return this.runTarget(project, `clean-${project.name}`, 'clean', options);
   }
 
   /** 编译单个工程 */
   async buildOne(project: ScannedProject, options?: BuildOptions): Promise<BuildProjectResult> {
-    this.patchConfigMk(project);
-    return this.runTarget(project, project.name, options);
+    const targetType = project.name.startsWith('__') ? 'template' : 'build';
+    return this.runTarget(project, project.name, targetType, options);
   }
 
   /** rebuild 单个工程（clean + build） */
   async rebuildOne(project: ScannedProject, options?: BuildOptions): Promise<BuildProjectResult> {
-    this.patchConfigMk(project);
-    return this.runTarget(project, `rebuild-${project.name}`, options);
+    return this.runTarget(project, `rebuild-${project.name}`, 'rebuild', options);
   }
 }
