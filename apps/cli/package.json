@@ -1,6 +1,6 @@
 {
   "name": "@sydev/cli",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "description": "OpenSwitch CLI 工具",
   "type": "module",
   "bin": {
