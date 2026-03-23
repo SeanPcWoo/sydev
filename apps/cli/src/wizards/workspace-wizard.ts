@@ -64,31 +64,32 @@ export async function runWorkspaceInit(
   const progressReporter = createCliProgressReporter();
   const rlWrapper = new RlWrapper(progressReporter);
 
+  // research/custom 模式：必须用 lts_3.6.5 + createbase=true 先创建完整 base
   const result = await rlWrapper.initWorkspace({
     cwd: config.cwd,
     basePath: config.basePath,
     platform: config.platform,
-    version: config.version === 'research' || config.version === 'custom' ? 'lts_3.6.5' : config.version,
-    createbase: config.createbase,
-    build: config.build,
+    version: isCloneMode ? 'lts_3.6.5' : config.version,
+    createbase: isCloneMode ? true : config.createbase,
+    build: isCloneMode ? false : config.build,
     debugLevel: config.debugLevel,
     os: config.os
   });
 
-  if (result.success && !isCloneMode) {
-    console.log(chalk.bold.green('\n✓ Workspace 初始化成功!\n'));
-  } else if (!result.success && !isCloneMode) {
+  if (result.success) {
+    if (!isCloneMode) {
+      console.log(chalk.bold.green('\n✓ Workspace 初始化成功!\n'));
+    }
+  } else if (isCloneMode) {
+    // clone 模式：createbase=true + build=false 时 rl-workspace 拷贝产物会失败，属于预期行为
+    // workspace 目录结构和配置文件已创建好，忽略错误继续
+    console.log(chalk.yellow(`\n⚠ rl-workspace 执行有错误（clone 模式下可忽略），继续处理...\n`));
+  } else {
     console.error(chalk.red(`\n✗ 初始化失败: ${result.error}\n`));
     if (result.fixSuggestion) {
       console.error(chalk.cyan(`建议: ${result.fixSuggestion}\n`));
     }
     process.exit(1);
-  } else if (isCloneMode) {
-    // clone 模式：停掉 spinner，不管 rl-workspace 成功与否都继续
-    progressReporter.emit('step', { name: '初始化 Workspace', progress: 100 });
-    if (!result.success) {
-      console.log(chalk.yellow(`\n⚠ rl-workspace 执行有错误，继续处理...\n`));
-    }
   }
 
   // research/custom 模式：删除 libsylixos 并 clone 仓库
