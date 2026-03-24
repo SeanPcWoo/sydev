@@ -105,11 +105,15 @@ sydev project create --config project.json
   "mode": "create",
   "name": "my-proj",
   "template": "app",
-  "type": "cmake",
+  "type": "realevo",
   "debugLevel": "release",
   "makeTool": "ninja"
 }
 ```
+
+说明：
+
+- `type` 可省略；未提供时默认使用 `realevo`
 
 ## device add
 

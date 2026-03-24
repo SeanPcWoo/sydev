@@ -178,8 +178,12 @@ workspace/
 
 - `build` / `clean` / `rebuild` / `upload` 默认把当前目录视为 workspace 根目录
 - `project list`、`build`、`clean`、`rebuild` 等命令当前通过“一级子目录同时包含 `.project` 和 `Makefile`”来识别项目
-- `.sydev/Makefile` 的工程 target 内部调用 `rl-build`，例如 `bear --append -- rl-build build --project=<name>`
+- `.sydev/Makefile` 中普通工程 target 内部调用 `rl-build`；`base` target 会进入 base 目录直接执行 `make all`
+- `sydev build` / `sydev build init` 增量更新 `.sydev/Makefile` 时会保留已有工程 block，只补齐缺失工程；传 `--default` 才会整份重生
+- `workspace init` 在创建 base 后，会同步 base `config.mk` 的 `PLATFORMS`，并自动修复 `libsylixos/SylixOS/mktemp/multi-platform.mk` 的并行编译模板
 - `build` / `clean` / `rebuild` 执行前，会先把目标工程 `config.mk` 里的 `SYLIXOS_BASE_PATH` 同步成当前 workspace 的 base 路径
+- `build` / `rebuild` 如果检测到你传了并行编译参数，但 base 的 `multi-platform.mk` 还没修复，只会给 warning，不会中断；可运行 `sydev build init` 自动修复
+- `project create` 在新建模板工程时，未显式指定 `--type` 会默认使用 `realevo`
 - `upload` / `device list` 会优先读取 `.realevo/devicelist.json`，若不存在再回退到 `.realevo/config.json`
 
 ## 更新文档的原则

@@ -31,8 +31,8 @@ export const buildCommand = new Command('build')
 \u793a\u4f8b:
   $ sydev build                  # \u4ea4\u4e92\u5f0f\u9009\u62e9\u5de5\u7a0b\u6216\u6a21\u677f
   $ sydev build libcpu           # \u7f16\u8bd1\u6307\u5b9a\u5de5\u7a0b
-  $ sydev build init             # \u751f\u6210/\u66f4\u65b0 .sydev/Makefile
-  $ sydev build init --default   # \u4ece\u5934\u91cd\u65b0\u751f\u6210 Makefile
+  $ sydev build init             # \u751f\u6210/\u66f4\u65b0 .sydev/Makefile\uff0c\u5e76\u4fee\u590d base \u5e76\u884c\u7f16\u8bd1\u6a21\u677f
+  $ sydev build init --default   # \u4ece\u5934\u91cd\u65b0\u751f\u6210 Makefile\uff0c\u5e76\u4fee\u590d base \u5e76\u884c\u7f16\u8bd1\u6a21\u677f
   $ sydev build libcpu -- --parallel=4   # \u900f\u4f20 rl-build build \u53c2\u6570
 `)
   .action(async (projectArg: string | undefined, opts: { quiet?: boolean }) => {
@@ -135,17 +135,23 @@ export const buildCommand = new Command('build')
 // build init \u5b50\u547d\u4ee4
 buildCommand
   .command('init')
-  .description('\u751f\u6210/\u66f4\u65b0 .sydev/Makefile\uff08\u5de5\u7a0b target \u5185\u90e8\u8c03\u7528 rl-build\uff09')
+  .description('\u751f\u6210/\u66f4\u65b0 .sydev/Makefile\uff0c\u5e76\u4fee\u590d base \u5e76\u884c\u7f16\u8bd1\u6a21\u677f\uff08\u9ed8\u8ba4\u4fdd\u7559\u5df2\u6709\u5de5\u7a0b target\uff0c--default \u8986\u76d6\u7528\u6237\u4fee\u6539\uff09')
   .option('--default', '\u4ece\u5934\u91cd\u65b0\u751f\u6210 Makefile\uff08\u8986\u76d6\u7528\u6237\u4fee\u6539\uff09')
   .action(async (opts: { default?: boolean }) => {
     const scanner = new WorkspaceScanner(process.cwd());
     const projects = scanner.scan();
-    if (projects.length === 0) {
+    const runner = new BuildRunner(projects, process.cwd());
+    if (!runner.hasBuildTargets()) {
       console.error(chalk.yellow('\u672a\u627e\u5230\u5de5\u7a0b\uff08\u786e\u8ba4\u5f53\u524d\u76ee\u5f55\u662f workspace \u6839\u76ee\u5f55\uff0c\u4e14\u5de5\u7a0b\u5b50\u76ee\u5f55\u540c\u65f6\u5305\u542b .project \u548c Makefile\uff09'));
       process.exit(1);
     }
-    const runner = new BuildRunner(projects, process.cwd());
     runner.ensureMakefile(opts.default);
+    const repair = runner.repairBaseParallelBuildSupport();
     console.log(chalk.green('\u2713 Makefile \u5df2\u751f\u6210: .sydev/Makefile'));
-    console.log(chalk.dim(`  \u5305\u542b ${projects.length} \u4e2a\u5de5\u7a0b target\uff0c\u53ef\u76f4\u63a5\u8fd0\u884c make -f .sydev/Makefile <\u5de5\u7a0b\u540d>\uff08\u5185\u90e8\u4f7f\u7528 rl-build\uff09`));
+    console.log(chalk.dim(`  \u5305\u542b ${projects.length} \u4e2a\u5de5\u7a0b target\uff0c\u53ef\u76f4\u63a5\u8fd0\u884c make -f .sydev/Makefile <\u5de5\u7a0b\u540d>\uff08\u666e\u901a\u5de5\u7a0b\u4f7f\u7528 rl-build\uff0cbase \u76f4\u63a5\u5728 base \u76ee\u5f55\u6267\u884c make\uff09`));
+    if (repair.exists && repair.changed) {
+      console.log(chalk.green('\u2713 \u5df2\u4fee\u590d base \u5e76\u884c\u7f16\u8bd1\u6a21\u677f: libsylixos/SylixOS/mktemp/multi-platform.mk'));
+    } else if (repair.exists) {
+      console.log(chalk.dim('  base \u5e76\u884c\u7f16\u8bd1\u6a21\u677f\u5df2\u662f\u6700\u65b0\uff0c\u65e0\u9700\u4fee\u590d'));
+    }
   });

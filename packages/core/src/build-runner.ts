@@ -3,6 +3,7 @@ import { spawn } from 'child_process';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import type { ScannedProject } from './workspace-scanner.js';
+import { getBaseMultiPlatformMkPatchStatus, syncBaseMultiPlatformMk } from './base-workspace-sync.js';
 
 export interface BuildOptions {
   extraArgs?: string[];  // -- 之后透传给 rl-build / Makefile 模板的自定义参数
@@ -98,8 +99,61 @@ function normalizeBuildExtraArgs(extraArgs: string[]): string[] {
   return normalized;
 }
 
+function normalizeBaseBuildExtraArgs(extraArgs: string[]): string[] {
+  const normalized: string[] = [];
+
+  for (let i = 0; i < extraArgs.length; i++) {
+    const arg = extraArgs[i];
+
+    if (/^--parallel=\d+$/.test(arg)) {
+      normalized.push(`-j${arg.slice('--parallel='.length)}`);
+      continue;
+    }
+
+    if (arg === '--parallel') {
+      const next = extraArgs[i + 1];
+      if (next && /^\d+$/.test(next)) {
+        normalized.push(`-j${next}`);
+        i++;
+        continue;
+      }
+
+      normalized.push('-j');
+      continue;
+    }
+
+    normalized.push(arg);
+  }
+
+  return normalized;
+}
+
 function formatExtraArgsForMake(extraArgs: string[]): string {
   return extraArgs.map(shellEscapeArg).join(' ');
+}
+
+function hasParallelBuildExtraArgs(extraArgs?: string[]): boolean {
+  if (!extraArgs || extraArgs.length === 0) {
+    return false;
+  }
+
+  for (let i = 0; i < extraArgs.length; i++) {
+    const arg = extraArgs[i];
+
+    if (/^-j\d*$/.test(arg)) {
+      return true;
+    }
+
+    if (arg === '-j' || arg === '--jobs' || arg === '--parallel') {
+      return true;
+    }
+
+    if (/^--jobs=\d+$/.test(arg) || /^--parallel(?:=\d+)?$/.test(arg)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function appendConfigLine(content: string, line: string): string {
@@ -192,6 +246,7 @@ export function extractBuildErrorLines(output: string, makefilePath: string): st
 export class BuildRunner extends EventEmitter {
   private basePath: string | undefined;
   private makefilePath: string;
+  private parallelBuildWarningEmitted = false;
 
   constructor(private projects: ScannedProject[], private workspaceRoot: string) {
     super();
@@ -264,10 +319,18 @@ export class BuildRunner extends EventEmitter {
     lines.push(`# ${n}`);
     lines.push('#' + '*'.repeat(79));
     lines.push(`${n}:`);
-    lines.push(`\tbear --append -- rl-build build --project=${n} $(RL_BUILD_ARGS)`);
+    if (n === 'base') {
+      lines.push(`\tcd ${project.path} && bear --append -- $(MAKE) all $(BASE_BUILD_ARGS)`);
+    } else {
+      lines.push(`\tbear --append -- rl-build build --project=${n} $(RL_BUILD_ARGS)`);
+    }
     lines.push('');
     lines.push(`clean-${n}:`);
-    lines.push(`\trl-build clean --project=${n} $(RL_CLEAN_ARGS)`);
+    if (n === 'base') {
+      lines.push(`\tcd ${project.path} && $(MAKE) clean $(BASE_CLEAN_ARGS)`);
+    } else {
+      lines.push(`\trl-build clean --project=${n} $(RL_CLEAN_ARGS)`);
+    }
     lines.push('');
     lines.push(`rebuild-${n}: clean-${n} ${n}`);
     if (n !== 'base') {
@@ -342,10 +405,33 @@ export class BuildRunner extends EventEmitter {
     return parts.join('\n');
   }
 
+  private isLegacyDefaultBaseBlock(block: string): boolean {
+    return block === [
+      '#*******************************************************************************',
+      '# base',
+      '#*******************************************************************************',
+      'base:',
+      '\tbear --append -- rl-build build --project=base $(RL_BUILD_ARGS)',
+      '',
+      'clean-base:',
+      '\trl-build clean --project=base $(RL_CLEAN_ARGS)',
+      '',
+      'rebuild-base: clean-base base',
+    ].join('\n');
+  }
+
+  private shouldRefreshProjectBlock(project: ScannedProject, existingBlock: string): boolean {
+    if (project.name === 'base' && this.isLegacyDefaultBaseBlock(existingBlock)) {
+      return true;
+    }
+
+    return false;
+  }
+
   /**
    * 从现有 Makefile 解析出结构化内容
    * - headerLines: 头部（变量声明到 .PHONY 行之后）
-   * - projectBlocks: Map<工程名, block 文本>（保留用户修改）
+   * - projectBlocks: Map<工程名, block 文本>（增量更新时按工程原样保留）
    * - tailContent: 用户模板区域及其后所有内容（原样保留）
    */
   private parseMakefileStructured(content: string): {
@@ -427,7 +513,11 @@ export class BuildRunner extends EventEmitter {
     return templates;
   }
 
-  /** 确保 .sydev/Makefile 存在且工程 target 是最新的 */
+  hasBuildTargets(): boolean {
+    return this.projects.length > 0;
+  }
+
+  /** 确保 .sydev/Makefile 存在；增量更新时只补齐缺失工程并刷新头部 */
   ensureMakefile(forceDefault = false): void {
     const sydevDir = join(this.workspaceRoot, '.sydev');
     if (!existsSync(sydevDir)) {
@@ -440,7 +530,7 @@ export class BuildRunner extends EventEmitter {
       return;
     }
 
-    // 增量更新：保留用户模板区和自定义 cp target，其余工程 target 按当前模板重建
+    // 增量更新：刷新头部，已有工程 block 原样保留，只为缺失工程补齐默认 block
     const existing = readFileSync(this.makefilePath, 'utf-8');
     const { projectBlocks, projectOrder, tailContent } = this.parseMakefileStructured(existing);
 
@@ -464,13 +554,26 @@ export class BuildRunner extends EventEmitter {
       const project = projectsByName.get(name);
       if (!project) continue;
       parts.push('');
-      parts.push(this.generateProjectBlock(project, projectBlocks.get(name)));
+      const existingBlock = projectBlocks.get(name);
+      const shouldRefresh = existingBlock ? this.shouldRefreshProjectBlock(project, existingBlock) : false;
+      parts.push(!existingBlock || shouldRefresh ? this.generateProjectBlock(project) : existingBlock);
     }
     if (tailContent.trim()) {
       parts.push('\n' + tailContent);
     }
 
     writeFileSync(this.makefilePath, parts.join('\n') + '\n', 'utf-8');
+  }
+
+  repairBaseParallelBuildSupport(): { basePath?: string; exists: boolean; changed: boolean } {
+    if (!this.basePath) {
+      return { basePath: undefined, exists: false, changed: false };
+    }
+
+    return {
+      basePath: this.basePath,
+      ...syncBaseMultiPlatformMk(this.basePath),
+    };
   }
 
   /** 提取 error 行 */
@@ -518,15 +621,22 @@ export class BuildRunner extends EventEmitter {
     options?: BuildOptions
   ): Promise<BuildProjectResult> {
     const args = ['-f', this.makefilePath, target];
+    const isBaseProject = project.name === 'base';
 
     if (options?.extraArgs && options.extraArgs.length > 0) {
-      const extraArgs = targetType === 'build' || targetType === 'rebuild' || targetType === 'template'
-        ? normalizeBuildExtraArgs(options.extraArgs)
-        : options.extraArgs;
+      const extraArgs = isBaseProject
+        ? normalizeBaseBuildExtraArgs(options.extraArgs)
+        : (targetType === 'build' || targetType === 'rebuild' || targetType === 'template'
+          ? normalizeBuildExtraArgs(options.extraArgs)
+          : options.extraArgs);
       const formattedArgs = formatExtraArgsForMake(extraArgs);
 
       if (formattedArgs) {
-        if (targetType === 'build' || targetType === 'rebuild' || targetType === 'template') {
+        if (isBaseProject && (targetType === 'build' || targetType === 'rebuild')) {
+          args.push(`BASE_BUILD_ARGS=${formattedArgs}`);
+        } else if (isBaseProject && targetType === 'clean') {
+          args.push(`BASE_CLEAN_ARGS=${formattedArgs}`);
+        } else if (targetType === 'build' || targetType === 'rebuild' || targetType === 'template') {
           args.push(`RL_BUILD_ARGS=${formattedArgs}`);
         } else if (targetType === 'clean') {
           args.push(`RL_CLEAN_ARGS=${formattedArgs}`);
@@ -536,6 +646,8 @@ export class BuildRunner extends EventEmitter {
 
     const startTime = Date.now();
     const quiet = options?.quiet ?? false;
+
+    this.maybeWarnParallelBuildTemplate(targetType, options?.extraArgs);
 
     try {
       this.syncBasePathBeforeTarget(project, targetType);
@@ -650,6 +762,33 @@ export class BuildRunner extends EventEmitter {
         reject(err);
       });
     });
+  }
+
+  private maybeWarnParallelBuildTemplate(
+    targetType: 'build' | 'clean' | 'rebuild' | 'template',
+    extraArgs?: string[]
+  ): void {
+    if (this.parallelBuildWarningEmitted) {
+      return;
+    }
+
+    if (!(targetType === 'build' || targetType === 'rebuild' || targetType === 'template')) {
+      return;
+    }
+
+    if (!hasParallelBuildExtraArgs(extraArgs)) {
+      return;
+    }
+
+    if (!this.basePath || getBaseMultiPlatformMkPatchStatus(this.basePath) !== 'unpatched') {
+      return;
+    }
+
+    this.parallelBuildWarningEmitted = true;
+    this.emit('progress', {
+      type: 'warning',
+      message: '检测到 base 的 libsylixos/SylixOS/mktemp/multi-platform.mk 尚未应用并行编译修复；本次继续编译，但多线程可能退化为单线程。可先运行 sydev build init 自动修复。'
+    } satisfies BuildProgressEvent);
   }
 
   /** clean 单个工程 */

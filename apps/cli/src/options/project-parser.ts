@@ -22,7 +22,7 @@ export class ProjectOptionParser extends BaseOptionParser<ProjectOptions> {
     makeTool: 'make',
     debugLevel: 'release',
     template: 'app',
-    type: 'cmake',
+    type: 'realevo',
   };
 
   protected requiredFields: (keyof ProjectOptions)[] = [

@@ -90,6 +90,7 @@ sydev rebuild libcpu -- --parallel=8
 - 非交互模式下，命令行参数会覆盖 JSON 配置文件中的同名字段
 - `version=custom` 时需要额外提供 `customRepo` 和 `customBranch`
 - `version=research` 时需要额外提供 `researchBranch`
+- 若成功创建 base，会同步 base `config.mk` 里的 `PLATFORMS`，并自动修复 `libsylixos/SylixOS/mktemp/multi-platform.mk` 的并行编译模板
 
 #### 示例
 
@@ -143,7 +144,7 @@ sydev workspace status
 #### 行为说明
 
 - `mode=import` 需要 `source` 和 `branch`
-- `mode=create` 需要 `template` 和 `type`
+- `mode=create` 需要 `template`；未显式指定 `type` 时默认使用 `realevo`
 - 交互模式下会根据所选模式提示不同字段
 - 非交互模式下，命令行参数覆盖 JSON 配置文件
 
@@ -152,7 +153,7 @@ sydev workspace status
 ```bash
 sydev project create
 sydev project create --mode import --name my-proj --source https://github.com/example/repo.git --branch main --make-tool make
-sydev project create --mode create --name my-proj --template app --type cmake --debug-level release --make-tool ninja
+sydev project create --mode create --name my-proj --template app --type realevo --debug-level release --make-tool ninja
 sydev project create --config project.json
 ```
 
@@ -247,6 +248,8 @@ sydev device list
 - 交互模式里除了项目，还会列出 `.sydev/Makefile` 中可识别的用户构建模板
 - 指定 `project` 参数时，先按项目名匹配，找不到再按构建模板名匹配
 - 执行前会把目标工程 `config.mk` 里的 `SYLIXOS_BASE_PATH` 同步为当前 workspace 的 base 路径
+- 若传了 `--parallel`、`-j4`、`--jobs=4` 等并行编译参数，且检测到 base 的 `libsylixos/SylixOS/mktemp/multi-platform.mk` 尚未修复，会提示 warning，但不阻断本次编译
+- 看到这类 warning 时，可先运行 `sydev build init` 自动修复 base 并行编译模板
 - 当前没有 `--all` 选项
 
 #### 示例
@@ -262,7 +265,7 @@ sydev build libcpu -- -j4
 
 ### `sydev build init`
 
-生成或更新 `.sydev/Makefile`，让你可以脱离 sydev 直接使用 `make -f .sydev/Makefile <target>`。工程 target 内部实际调用的是 `rl-build`。
+生成或更新 `.sydev/Makefile`，让你可以脱离 sydev 直接使用 `make -f .sydev/Makefile <target>`。默认只刷新头部并补齐缺失工程 block，已有工程 block 会原样保留；传 `--default` 才会覆盖用户修改。新生成的普通工程 target 内部实际调用的是 `rl-build`，`base` target 会进入 base 目录直接执行 `make all`。命令执行时还会顺手修复 base 的 `libsylixos/SylixOS/mktemp/multi-platform.mk` 并行编译模板。
 
 #### 选项
 
@@ -297,6 +300,7 @@ make -f .sydev/Makefile libcpu RL_BUILD_ARGS='--parallel=4'
 
 - 无参数时弹出项目多选
 - 执行前会把目标工程 `config.mk` 里的 `SYLIXOS_BASE_PATH` 同步为当前 workspace 的 base 路径
+- 若传了 `--parallel`、`-j4`、`--jobs=4` 等并行编译参数，且检测到 base 的 `libsylixos/SylixOS/mktemp/multi-platform.mk` 尚未修复，会提示 warning，但不阻断本次重新编译
 - 当前没有 `--all`
 
 #### 示例

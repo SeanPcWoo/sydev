@@ -92,7 +92,7 @@ describe('BuildRunner', () => {
     );
   });
 
-  it('生成的 Makefile 使用 rl-build，并且不再改写 config.mk', () => {
+  it('生成的 Makefile 对普通工程使用 rl-build，对 base 直接进入目录执行 make，并且不再改写 config.mk', () => {
     const realevoDir = join(workspaceRoot, '.realevo');
     const basePath = join(realevoDir, 'base');
     const demoConfigMk = join(workspaceRoot, 'demo', 'config.mk');
@@ -107,15 +107,63 @@ describe('BuildRunner', () => {
     runner.ensureMakefile();
 
     const makefile = readFileSync(join(workspaceRoot, '.sydev', 'Makefile'), 'utf-8');
-    expect(makefile).toContain('bear --append -- rl-build build --project=base $(RL_BUILD_ARGS)');
+    expect(makefile).toContain(`cd ${basePath} && bear --append -- $(MAKE) all $(BASE_BUILD_ARGS)`);
+    expect(makefile).toContain(`cd ${basePath} && $(MAKE) clean $(BASE_CLEAN_ARGS)`);
     expect(makefile).toContain('bear --append -- rl-build build --project=demo $(RL_BUILD_ARGS)');
     expect(makefile).toContain('rl-build clean --project=demo $(RL_CLEAN_ARGS)');
     expect(readFileSync(demoConfigMk, 'utf-8')).toBe('SYLIXOS_BASE_PATH = /tmp/keep-me\nPLATFORM_NAME = OLD\n');
   });
 
-  it('增量更新时切换到 rl-build 并保留自定义 cp target', () => {
+  it('增量更新时会把旧版默认 base block 升级为直接执行 make 的规则', () => {
+    const realevoDir = join(workspaceRoot, '.realevo');
+    const basePath = join(realevoDir, 'base');
     const project = { name: 'demo', path: join(workspaceRoot, 'demo') };
+    mkdirSync(join(workspaceRoot, '.sydev'), { recursive: true });
+    mkdirSync(basePath, { recursive: true });
+    writeFileSync(join(realevoDir, 'config.json'), JSON.stringify({ base: basePath }), 'utf-8');
+    writeFileSync(join(basePath, 'Makefile'), 'all:\n\t@echo base\n', 'utf-8');
+    writeFileSync(join(workspaceRoot, '.sydev', 'Makefile'), [
+      '# SylixOS Workspace Makefile',
+      '# 由 sydev 自动生成/更新',
+      '# __ 开头的 target 为用户编译模板，sydev 不会修改',
+      '',
+      `export WORKSPACE_base = ${basePath}`,
+      `export WORKSPACE_demo = ${project.path}`,
+      '',
+      `export SYLIXOS_BASE_PATH = ${basePath}`,
+      '',
+      '# ─── 工程 Targets ───────────────────────────────────────────────',
+      '',
+      '.PHONY: base clean-base rebuild-base demo clean-demo rebuild-demo cp-demo',
+      '',
+      '#*******************************************************************************',
+      '# base',
+      '#*******************************************************************************',
+      'base:',
+      '\tbear --append -- rl-build build --project=base $(RL_BUILD_ARGS)',
+      '',
+      'clean-base:',
+      '\trl-build clean --project=base $(RL_CLEAN_ARGS)',
+      '',
+      'rebuild-base: clean-base base',
+      '',
+    ].join('\n'), 'utf-8');
+
     const runner = new BuildRunner([project], workspaceRoot);
+    runner.ensureMakefile();
+
+    const makefile = readFileSync(join(workspaceRoot, '.sydev', 'Makefile'), 'utf-8');
+    expect(makefile).toContain(`cd ${basePath} && bear --append -- $(MAKE) all $(BASE_BUILD_ARGS)`);
+    expect(makefile).toContain(`cd ${basePath} && $(MAKE) clean $(BASE_CLEAN_ARGS)`);
+    expect(makefile).not.toContain('rl-build build --project=base $(RL_BUILD_ARGS)');
+    expect(makefile).not.toContain('rl-build clean --project=base $(RL_CLEAN_ARGS)');
+  });
+
+  it('增量更新时保留已有工程 block，并为缺失工程追加默认 target', () => {
+    const project = { name: 'demo', path: join(workspaceRoot, 'demo') };
+    const extraProject = { name: 'extra', path: join(workspaceRoot, 'extra') };
+    mkdirSync(extraProject.path, { recursive: true });
+    const runner = new BuildRunner([project, extraProject], workspaceRoot);
     mkdirSync(join(workspaceRoot, '.sydev'), { recursive: true });
     writeFileSync(join(workspaceRoot, '.sydev', 'Makefile'), [
       '# SylixOS Workspace Makefile',
@@ -153,10 +201,54 @@ describe('BuildRunner', () => {
     runner.ensureMakefile();
 
     const makefile = readFileSync(join(workspaceRoot, '.sydev', 'Makefile'), 'utf-8');
+    expect(makefile).toContain(`\tbear --append -- make -C ${project.path} all`);
+    expect(makefile).toContain(`\tmake -C ${project.path} clean`);
+    expect(makefile).toContain('\tcp /tmp/custom.so /tmp/destination');
+    expect(makefile).not.toContain('rl-build build --project=demo $(RL_BUILD_ARGS)');
+    expect(makefile).not.toContain('rl-build clean --project=demo $(RL_CLEAN_ARGS)');
+    expect(makefile).toContain('bear --append -- rl-build build --project=extra $(RL_BUILD_ARGS)');
+    expect(makefile).toContain('rl-build clean --project=extra $(RL_CLEAN_ARGS)');
+    expect(makefile).toContain('__demo:');
+  });
+
+  it('使用 --default 时会重建已有工程 block', () => {
+    const project = { name: 'demo', path: join(workspaceRoot, 'demo') };
+    const runner = new BuildRunner([project], workspaceRoot);
+    mkdirSync(join(workspaceRoot, '.sydev'), { recursive: true });
+    writeFileSync(join(workspaceRoot, '.sydev', 'Makefile'), [
+      '# SylixOS Workspace Makefile',
+      '# 由 sydev 自动生成/更新',
+      '# __ 开头的 target 为用户编译模板，sydev 不会修改',
+      '',
+      `export WORKSPACE_demo = ${project.path}`,
+      '',
+      '# ─── 工程 Targets ───────────────────────────────────────────────',
+      '',
+      '.PHONY: demo clean-demo rebuild-demo cp-demo',
+      '',
+      '#*******************************************************************************',
+      '# demo',
+      '#*******************************************************************************',
+      'demo:',
+      `\tbear --append -- make -C ${project.path} all`,
+      '',
+      'clean-demo:',
+      `\tmake -C ${project.path} clean`,
+      '',
+      'rebuild-demo: clean-demo demo',
+      '',
+      'cp-demo:',
+      '\tcp /tmp/custom.so /tmp/destination',
+      '',
+    ].join('\n'), 'utf-8');
+
+    runner.ensureMakefile(true);
+
+    const makefile = readFileSync(join(workspaceRoot, '.sydev', 'Makefile'), 'utf-8');
     expect(makefile).toContain('bear --append -- rl-build build --project=demo $(RL_BUILD_ARGS)');
     expect(makefile).toContain('rl-build clean --project=demo $(RL_CLEAN_ARGS)');
-    expect(makefile).toContain('\tcp /tmp/custom.so /tmp/destination');
-    expect(makefile).toContain('__demo:');
+    expect(makefile).not.toContain(`\tbear --append -- make -C ${project.path} all`);
+    expect(makefile).not.toContain('\tcp /tmp/custom.so /tmp/destination');
   });
 
   it('将 -j 参数转换为 rl-build 的 --parallel 参数', async () => {
@@ -174,6 +266,31 @@ describe('BuildRunner', () => {
     expect(spawn).toHaveBeenCalledWith(
       'make',
       ['-f', join(workspaceRoot, '.sydev', 'Makefile'), 'demo', 'RL_BUILD_ARGS=--parallel=4'],
+      { cwd: workspaceRoot, stdio: ['ignore', 'pipe', 'pipe'] }
+    );
+  });
+
+  it('编译 base 时保留 make 的 -j 参数，并通过 BASE_BUILD_ARGS 传递', async () => {
+    const mockProc = createMockProcess();
+    vi.mocked(spawn).mockReturnValue(mockProc);
+
+    const realevoDir = join(workspaceRoot, '.realevo');
+    const basePath = join(realevoDir, 'base');
+    mkdirSync(basePath, { recursive: true });
+    writeFileSync(join(realevoDir, 'config.json'), JSON.stringify({ base: basePath }), 'utf-8');
+    writeFileSync(join(basePath, 'Makefile'), 'all:\n\t@echo base\n', 'utf-8');
+
+    const project = { name: 'demo', path: join(workspaceRoot, 'demo') };
+    const runner = new BuildRunner([project], workspaceRoot);
+    runner.ensureMakefile();
+
+    const promise = runner.buildOne({ name: 'base', path: basePath }, { extraArgs: ['-j4'] });
+    mockProc.emit('close', 0);
+    await promise;
+
+    expect(spawn).toHaveBeenCalledWith(
+      'make',
+      ['-f', join(workspaceRoot, '.sydev', 'Makefile'), 'base', 'BASE_BUILD_ARGS=-j4'],
       { cwd: workspaceRoot, stdio: ['ignore', 'pipe', 'pipe'] }
     );
   });
@@ -226,5 +343,96 @@ describe('BuildRunner', () => {
 
     mockProc.emit('close', 0);
     await promise;
+  });
+
+  it('用户传并行编译参数且 base 模板未修复时发出 warning，但仍继续编译', async () => {
+    const mockProc = createMockProcess();
+    vi.mocked(spawn).mockReturnValue(mockProc);
+
+    const realevoDir = join(workspaceRoot, '.realevo');
+    const basePath = join(realevoDir, 'base');
+    const multiPlatformMkPath = join(basePath, 'libsylixos', 'SylixOS', 'mktemp', 'multi-platform.mk');
+    mkdirSync(join(basePath, 'libsylixos', 'SylixOS', 'mktemp'), { recursive: true });
+    writeFileSync(join(realevoDir, 'config.json'), JSON.stringify({ base: basePath }), 'utf-8');
+    writeFileSync(join(basePath, 'Makefile'), 'all:\n\t@echo base\n', 'utf-8');
+    writeFileSync(multiPlatformMkPath, [
+      'all:',
+      '\t@$(foreach platform,$(PLATFORMS),make all -C $(platform);)',
+      '',
+      'clean:',
+      '\t@$(foreach platform,$(PLATFORMS),make clean -C $(platform);)',
+      '',
+      'subdir-all:',
+      '\tmake all -j',
+      '',
+      'subdir-clean:',
+      '\tmake clean -j',
+      '',
+    ].join('\n'), 'utf-8');
+
+    const project = { name: 'demo', path: join(workspaceRoot, 'demo') };
+    const runner = new BuildRunner([project], workspaceRoot);
+    runner.ensureMakefile();
+
+    const progressSpy = vi.fn();
+    runner.on('progress', progressSpy);
+
+    const promise = runner.buildOne(project, { extraArgs: ['-j4'] });
+    mockProc.emit('close', 0);
+    await promise;
+
+    expect(progressSpy).toHaveBeenCalledWith({
+      type: 'warning',
+      message: '检测到 base 的 libsylixos/SylixOS/mktemp/multi-platform.mk 尚未应用并行编译修复；本次继续编译，但多线程可能退化为单线程。可先运行 sydev build init 自动修复。'
+    });
+    expect(spawn).toHaveBeenCalledWith(
+      'make',
+      ['-f', join(workspaceRoot, '.sydev', 'Makefile'), 'demo', 'RL_BUILD_ARGS=--parallel=4'],
+      { cwd: workspaceRoot, stdio: ['ignore', 'pipe', 'pipe'] }
+    );
+  });
+
+  it('build init 使用的修复函数会补丁 base 的 multi-platform.mk', () => {
+    const realevoDir = join(workspaceRoot, '.realevo');
+    const basePath = join(realevoDir, 'base');
+    const multiPlatformMkPath = join(basePath, 'libsylixos', 'SylixOS', 'mktemp', 'multi-platform.mk');
+    mkdirSync(join(basePath, 'libsylixos', 'SylixOS', 'mktemp'), { recursive: true });
+    writeFileSync(join(realevoDir, 'config.json'), JSON.stringify({ base: basePath }), 'utf-8');
+    writeFileSync(join(basePath, 'Makefile'), 'all:\n\t@echo base\n', 'utf-8');
+    writeFileSync(multiPlatformMkPath, [
+      'all:',
+      '\t@$(foreach platform,$(PLATFORMS),make all -C $(platform);)',
+      '',
+      'clean:',
+      '\t@$(foreach platform,$(PLATFORMS),make clean -C $(platform);)',
+      '',
+      'subdir-all:',
+      '\tmake all -j',
+      '',
+      'subdir-clean:',
+      '\tmake clean -j',
+      '',
+    ].join('\n'), 'utf-8');
+
+    const project = { name: 'demo', path: join(workspaceRoot, 'demo') };
+    const runner = new BuildRunner([project], workspaceRoot);
+
+    const result = runner.repairBaseParallelBuildSupport();
+
+    expect(result).toEqual({ basePath, exists: true, changed: true });
+    expect(readFileSync(multiPlatformMkPath, 'utf-8')).toBe([
+      'all:',
+      '\t+@$(foreach platform,$(PLATFORMS),$(MAKE) all -C $(platform);)',
+      '',
+      'clean:',
+      '\t+@$(foreach platform,$(PLATFORMS),$(MAKE) clean -C $(platform);)',
+      '',
+      'subdir-all:',
+      '\t$(MAKE) all',
+      '',
+      'subdir-clean:',
+      '\t$(MAKE) clean',
+      '',
+    ].join('\n'));
   });
 });

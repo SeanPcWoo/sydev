@@ -6,7 +6,7 @@ import { WorkspaceScanner } from '@sydev/core/workspace-scanner.js';
 const helpExamples = {
   '交互式创建 (推荐)': 'sydev project create',
   '导入 Git 仓库': 'sydev project create --mode import --name my-proj --source https://github.com/xxx/repo.git --branch main --make-tool make',
-  '新建工程': 'sydev project create --mode create --name my-proj --template app --type cmake --debug-level release --make-tool make',
+  '新建工程': 'sydev project create --mode create --name my-proj --template app --type realevo --debug-level release --make-tool make',
   '使用配置文件': 'sydev project create --config project.json',
 };
 

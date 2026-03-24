@@ -60,8 +60,12 @@ sydev template apply --help
 
 - `build` / `clean` / `rebuild` 当前没有 `--all`
 - `build` 可以执行 `.sydev/Makefile` 中的构建模板，如 `sydev build __demo`
-- `.sydev/Makefile` 的工程 target 内部调用 `rl-build`
+- `.sydev/Makefile` 中普通工程 target 内部调用 `rl-build`，`base` 会直接进入 base 目录执行 `make`
+- `sydev build` / `build init` 增量更新 `.sydev/Makefile` 时只补缺失工程；`--default` 才覆盖已有工程 block
+- `workspace init` 会自动修复 base 的 `libsylixos/SylixOS/mktemp/multi-platform.mk` 并行编译模板
 - `build` / `clean` / `rebuild` 执行前会自动同步目标工程 `config.mk` 里的 `SYLIXOS_BASE_PATH`
+- `build` / `rebuild` 传并行参数时若发现 base 模板未修复，只会 warning；运行 `sydev build init` 可自动修复
+- `project create` 新建模板工程时，未显式指定 `--type` 默认就是 `realevo`
 - `template` 管理的是配置模板，不是构建模板
 - `upload` 上传多个项目时必须显式传 `--device`
 - `template apply` 的 `<source>` 可以是模板 ID，也可以是 JSON 文件路径
@@ -83,6 +87,17 @@ sydev workspace init \
 ```
 
 ### project
+
+```bash
+sydev project create \
+  --mode create \
+  --name my-proj \
+  --template app \
+  --debug-level release \
+  --make-tool make
+```
+
+如需显式指定，默认构建类型为 `realevo`。
 
 ```bash
 sydev project create \

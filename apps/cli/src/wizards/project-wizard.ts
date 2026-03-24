@@ -256,16 +256,16 @@ export async function runProjectWizard(): Promise<void> {
         name: 'type',
         message: '构建类型:',
         choices: [
+          { name: 'RealEvo', value: 'realevo' },
           { name: 'CMake', value: 'cmake' },
           { name: 'Automake', value: 'automake' },
-          { name: 'RealEvo', value: 'realevo' },
           { name: 'ROS2', value: 'ros2' },
           { name: 'Python', value: 'python' },
           { name: 'Cython', value: 'cython' },
           { name: 'Go', value: 'go' },
           { name: 'JavaScript', value: 'javascript' }
         ],
-        default: 'cmake'
+        default: 'realevo'
       },
       {
         type: 'list',

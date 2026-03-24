@@ -238,6 +238,31 @@ describe('RlWrapper', () => {
     ], { cwd: undefined, env: process.env, shell: true });
   });
 
+  it('should default rl-project type to realevo for template project creation', async () => {
+    const mockProc = new EventEmitter() as any;
+    mockProc.stdout = new EventEmitter();
+    mockProc.stderr = new EventEmitter();
+
+    vi.mocked(spawn).mockReturnValue(mockProc);
+
+    const wrapper = new RlWrapper(progressReporter);
+    const promise = wrapper.createProject({
+      name: 'default-type-project',
+      template: 'app'
+    });
+
+    mockProc.emit('close', 0);
+    const result = await promise;
+
+    expect(result.success).toBe(true);
+    expect(spawn).toHaveBeenCalledWith('rl-project', [
+      'create',
+      '--name=default-type-project',
+      '--template=app',
+      '--type=realevo'
+    ], { cwd: undefined, env: process.env, shell: true });
+  });
+
   it('should call addDevice with correct rl-device command', async () => {
     const mockProc = new EventEmitter() as any;
     mockProc.stdout = new EventEmitter();
@@ -370,6 +395,101 @@ describe('RlWrapper', () => {
     expect(readFileSync(configMkPath, 'utf-8')).toBe(
       'DEBUG_LEVEL := release\nPLATFORMS := ARM64_GENERIC X86_64\n'
     );
+
+    rmSync(workspaceRoot, { recursive: true, force: true });
+  });
+
+  it('should patch base multi-platform.mk to preserve recursive make jobserver', async () => {
+    const workspaceRoot = mkdtempSync(join(tmpdir(), 'sydev-rl-wrapper-'));
+    const realevoDir = join(workspaceRoot, '.realevo');
+    const basePath = join(realevoDir, 'base');
+    const configMkPath = join(basePath, 'config.mk');
+    const multiPlatformMkPath = join(basePath, 'libsylixos', 'SylixOS', 'mktemp', 'multi-platform.mk');
+
+    mkdirSync(join(basePath, 'libsylixos', 'SylixOS', 'mktemp'), { recursive: true });
+    writeFileSync(join(realevoDir, 'config.json'), JSON.stringify({
+      base: basePath,
+      platforms: ['ARM64_GENERIC'],
+    }), 'utf-8');
+    writeFileSync(configMkPath, 'DEBUG_LEVEL := release\n', 'utf-8');
+    writeFileSync(multiPlatformMkPath, [
+      'all:',
+      '\t@$(foreach platform,$(PLATFORMS),make all -C $(platform);)',
+      '',
+      'clean:',
+      '\t@$(foreach platform,$(PLATFORMS),make clean -C $(platform);)',
+      '',
+      'subdir-all:',
+      '\tmake all -j',
+      '',
+      'subdir-clean:',
+      '\tmake clean -j',
+      '',
+    ].join('\n'), 'utf-8');
+
+    const mockProc = new EventEmitter() as any;
+    mockProc.stdout = new EventEmitter();
+    mockProc.stderr = new EventEmitter();
+    vi.mocked(spawn).mockReturnValue(mockProc);
+
+    const wrapper = new RlWrapper(progressReporter);
+    const promise = wrapper.initWorkspace({
+      cwd: workspaceRoot,
+      basePath,
+      platform: ['ARM64_GENERIC'],
+      version: 'default',
+    });
+
+    mockProc.emit('close', 0);
+    const result = await promise;
+
+    expect(result.success).toBe(true);
+    expect(readFileSync(multiPlatformMkPath, 'utf-8')).toBe([
+      'all:',
+      '\t+@$(foreach platform,$(PLATFORMS),$(MAKE) all -C $(platform);)',
+      '',
+      'clean:',
+      '\t+@$(foreach platform,$(PLATFORMS),$(MAKE) clean -C $(platform);)',
+      '',
+      'subdir-all:',
+      '\t$(MAKE) all',
+      '',
+      'subdir-clean:',
+      '\t$(MAKE) clean',
+      '',
+    ].join('\n'));
+
+    rmSync(workspaceRoot, { recursive: true, force: true });
+  });
+
+  it('should ignore missing base multi-platform.mk during workspace init', async () => {
+    const workspaceRoot = mkdtempSync(join(tmpdir(), 'sydev-rl-wrapper-'));
+    const realevoDir = join(workspaceRoot, '.realevo');
+    const basePath = join(realevoDir, 'base');
+
+    mkdirSync(basePath, { recursive: true });
+    writeFileSync(join(realevoDir, 'config.json'), JSON.stringify({
+      base: basePath,
+      platforms: ['ARM64_GENERIC'],
+    }), 'utf-8');
+
+    const mockProc = new EventEmitter() as any;
+    mockProc.stdout = new EventEmitter();
+    mockProc.stderr = new EventEmitter();
+    vi.mocked(spawn).mockReturnValue(mockProc);
+
+    const wrapper = new RlWrapper(progressReporter);
+    const promise = wrapper.initWorkspace({
+      cwd: workspaceRoot,
+      basePath,
+      platform: ['ARM64_GENERIC'],
+      version: 'default',
+    });
+
+    mockProc.emit('close', 0);
+    const result = await promise;
+
+    expect(result.success).toBe(true);
 
     rmSync(workspaceRoot, { recursive: true, force: true });
   });
