@@ -41,9 +41,9 @@ import { ConfigReader } from '@sydev/core/config-reader.js';
 import { WorkspaceScanner } from '@sydev/core/workspace-scanner.js';
 import { RlWrapper } from '@sydev/core/rl-wrapper.js';
 import { InitOrchestrator } from '@sydev/core/init-orchestrator.js';
-import { fullConfigSchema } from '@sydev/core/schemas/index.js';
+import { deviceSchema, fullConfigSchema, projectSchema } from '@sydev/core/schemas/index.js';
 import type { TemplateType } from '@sydev/core/template-manager.js';
-import type { FullConfig } from '@sydev/core/schemas/index.js';
+import type { DeviceConfig, FullConfig, ProjectConfig } from '@sydev/core/schemas/index.js';
 import { createCliProgressReporter } from '../utils/cli-progress.js';
 import { loadDevices } from '../helpers/device-loader.js';
 
@@ -59,12 +59,35 @@ function getGlobalTemplateDir(): string {
   return join(homedir(), '.sydev');
 }
 
-type TemplateContent = { type: TemplateType; data: any };
+type TemplateContent =
+  | { type: 'workspace'; data: any }
+  | { type: 'project'; data: any }
+  | { type: 'device'; data: any }
+  | { type: 'full'; data: any };
 type ApplyCommandOptions = { cwd?: string; basePath?: string; yes?: boolean };
+type ScopedTemplateContent =
+  | { type: 'project'; data: any }
+  | { type: 'device'; data: any };
+type ScopedApplyRequest =
+  | {
+      kind: 'project';
+      cwd: string;
+      config: ProjectConfig;
+      stepName: string;
+    }
+  | {
+      kind: 'device';
+      cwd: string;
+      config: DeviceConfig;
+      stepName: string;
+    };
+type ScopedApplyValidationResult =
+  | { valid: true; request: ScopedApplyRequest }
+  | { valid: false; error: string; errors?: string[] };
 
 function detectTemplateContent(parsed: any): TemplateContent {
   if (parsed.type && ['workspace', 'project', 'device'].includes(parsed.type)) {
-    const detectedType = parsed.type as TemplateType;
+    const detectedType = parsed.type as 'workspace' | 'project' | 'device';
     const templateData = parsed[detectedType];
     if (!templateData) {
       throw new Error(`文件中缺少 ${detectedType} 字段`);
@@ -106,17 +129,7 @@ function loadTemplateContentFromFile(file: string): TemplateContent {
 }
 
 async function resolveApplyPaths(opts: ApplyCommandOptions): Promise<{ cwd: string; basePath: string }> {
-  let cwd = opts.cwd?.trim();
-  if (!cwd) {
-    if (opts.yes) {
-      cwd = process.cwd();
-    } else {
-      const answers = await inquirer.prompt([
-        { type: 'input', name: 'cwd', message: 'Workspace 路径:', default: process.cwd() },
-      ]);
-      cwd = answers.cwd.trim();
-    }
-  }
+  const cwd = await resolveApplyCwd(opts);
 
   let basePath = opts.basePath?.trim();
   if (!basePath) {
@@ -132,6 +145,79 @@ async function resolveApplyPaths(opts: ApplyCommandOptions): Promise<{ cwd: stri
   }
 
   return { cwd: cwd!, basePath: basePath! };
+}
+
+async function resolveApplyCwd(opts: ApplyCommandOptions): Promise<string> {
+  let cwd = opts.cwd?.trim();
+  if (!cwd) {
+    if (opts.yes) {
+      cwd = process.cwd();
+    } else {
+      const answers = await inquirer.prompt([
+        { type: 'input', name: 'cwd', message: 'Workspace 路径:', default: process.cwd() },
+      ]);
+      cwd = answers.cwd.trim();
+    }
+  }
+
+  return cwd!;
+}
+
+export function isSydevWorkspace(workspaceRoot: string): boolean {
+  return existsSync(join(workspaceRoot, '.realevo'));
+}
+
+export function buildScopedTemplateApplyRequest(
+  templateContent: ScopedTemplateContent,
+  cwd: string,
+): ScopedApplyValidationResult {
+  if (!isSydevWorkspace(cwd)) {
+    return {
+      valid: false,
+      error: `${templateContent.type} 模板需要在已有 workspace 中使用`,
+      errors: [`未检测到 workspace 标记目录: ${join(cwd, '.realevo')}`],
+    };
+  }
+
+  if (templateContent.type === 'project') {
+    const validation = projectSchema.safeParse(templateContent.data);
+    if (!validation.success) {
+      return {
+        valid: false,
+        error: '模板配置验证失败',
+        errors: validation.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`),
+      };
+    }
+
+    return {
+      valid: true,
+      request: {
+        kind: 'project',
+        cwd,
+        config: validation.data as ProjectConfig,
+        stepName: `project:${validation.data.name}`,
+      },
+    };
+  }
+
+  const validation = deviceSchema.safeParse(templateContent.data);
+  if (!validation.success) {
+    return {
+      valid: false,
+      error: '模板配置验证失败',
+      errors: validation.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`),
+    };
+  }
+
+  return {
+    valid: true,
+    request: {
+      kind: 'device',
+      cwd,
+      config: validation.data as DeviceConfig,
+      stepName: `device:${validation.data.name}`,
+    },
+  };
 }
 
 export const templateCommand = new Command('template')
@@ -320,6 +406,36 @@ templateCommand
 
     console.log(chalk.cyan(`\n应用模板: ${sourceLabel}\n`));
 
+    if (templateContent.type === 'project' || templateContent.type === 'device') {
+      const cwd = await resolveApplyCwd(opts);
+      const scoped = buildScopedTemplateApplyRequest(templateContent, cwd);
+
+      if (!scoped.valid) {
+        console.error(chalk.red(`✗ ${scoped.error}`));
+        scoped.errors?.forEach((e) => console.error(chalk.yellow(`  - ${e}`)));
+        return;
+      }
+
+      const progressReporter = createCliProgressReporter();
+      const rlWrapper = new RlWrapper(progressReporter);
+
+      console.log(chalk.cyan('开始应用模板...\n'));
+      const result = scoped.request.kind === 'project'
+        ? await rlWrapper.createProject({ ...scoped.request.config, cwd: scoped.request.cwd })
+        : await rlWrapper.addDevice({ ...scoped.request.config, cwd: scoped.request.cwd });
+
+      if (result.success) {
+        console.log(chalk.bold.green('\n✓ 模板应用成功!'));
+        console.log(chalk.dim(`  - ${scoped.request.stepName}`));
+      } else {
+        console.log(chalk.yellow('\n失败的步骤:'));
+        console.log(chalk.red(`  ✗ ${scoped.request.stepName}: ${result.error ?? '未知错误'}`));
+      }
+
+      progressReporter.removeAllListeners();
+      return;
+    }
+
     const { cwd, basePath } = await resolveApplyPaths(opts);
 
     let config: Partial<FullConfig>;
@@ -359,14 +475,8 @@ templateCommand
         console.error(chalk.red('✗ 必须包含 workspace 配置'));
         return;
       }
-    } else if (templateContent.type === 'workspace') {
-      config = { schemaVersion: 1, workspace: { ...templateContent.data, cwd, basePath } } as any;
-    } else if (templateContent.type === 'project') {
-      console.error(chalk.yellow('⚠ project 模板需要在已有 workspace 中使用，请提供 workspace 配置'));
-      return;
     } else {
-      console.error(chalk.yellow('⚠ device 模板需要在已有 workspace 中使用，请提供 workspace 配置'));
-      return;
+      config = { schemaVersion: 1, workspace: { ...templateContent.data, cwd, basePath } } as any;
     }
     // 验证配置
     const validation = ConfigManager.validate(fullConfigSchema, config);

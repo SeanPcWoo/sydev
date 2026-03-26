@@ -46,7 +46,7 @@ sydev template apply --help
 - 只传 `--config` 也会进入非交互模式
 - `upload` 上传多个项目或 `--all` 时必须显式传 `--device`
 - `template apply` 的 `<source>` 可以是模板 ID，也可以是 JSON 文件路径
-- `template apply` 当前直接初始化只支持 `workspace` 和 `full` 类型模板
+- `template apply` 对 `workspace` / `full` 模板会初始化 workspace；对 `project` / `device` 模板会复用已有 workspace
 - `build` / `clean` / `rebuild` 执行前会先校正目标工程 `config.mk` 里的 `SYLIXOS_BASE_PATH`
 
 ## 如果你只想把命令交给别人使用

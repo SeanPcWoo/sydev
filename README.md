@@ -110,6 +110,7 @@ sydev template apply sydev-config.json --cwd /path/to/new-ws --base-path /path/t
 - 保存一套可重复使用的环境配置
 - 从 JSON 文件导入配置
 - 在新目录中应用 `workspace` 或 `full` 配置
+- 在已有 workspace 中复用 `project` 或 `device` 模板
 
 ### 构建模板：`sydev build`
 

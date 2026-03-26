@@ -459,8 +459,9 @@ sydev template show my-template
   - 非 `-y` 模式会提示输入
   - `-y` 模式使用 `${cwd}/.realevo/base`
 - `full` 模板在交互模式下可选择只应用部分内容
-- `workspace` 和 `full` 模板可直接初始化
-- `project` 和 `device` 模板当前不会单独初始化，它们会提示“需要已有 workspace 配置”
+- `workspace` 和 `full` 模板会初始化 workspace
+- `project` 和 `device` 模板会在已有 workspace 中直接执行，对应要求目标目录下存在 `.realevo/`
+- `project` 和 `device` 模板只需要 `--cwd`，不会使用 `--base-path`
 - 无论 JSON 文件里是否已经带 `workspace.cwd` / `workspace.basePath`，`apply` 都会用当前命令解析出的路径覆盖
 
 #### 示例

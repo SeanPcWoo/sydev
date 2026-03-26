@@ -307,6 +307,11 @@ sydev init --config full-config.json
 
 因此，即使 JSON 文件里本身带了 `cwd` / `basePath`，`apply` 也会用当前命令解析出的值覆盖。
 
+补充说明：
+
+- `workspace` / `full` 模板应用时会真正用到 `cwd` 和 `basePath`
+- `project` / `device` 模板应用时只要求目标 `cwd` 已经是一个存在 `.realevo/` 的 workspace，`basePath` 不参与执行
+
 ## template export 输出格式
 
 ### 命令
