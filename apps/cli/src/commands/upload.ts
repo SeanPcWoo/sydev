@@ -195,7 +195,7 @@ export const uploadCommand = new Command('upload')
     }
 
     // 交互式选择
-    const { default: inquirer } = await import('inquirer');
+    const { default: inquirer } = await import('../utils/inquirer.js');
 
     const { selectedProjects } = await inquirer.prompt([{
       type: 'checkbox',

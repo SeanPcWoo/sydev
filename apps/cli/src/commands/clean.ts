@@ -23,19 +23,21 @@ export const cleanCommand = new Command('clean')
 示例:
   $ sydev clean                  # 交互式选择工程
   $ sydev clean libcpu           # 清理指定工程
+  $ sydev clean base             # 在 base 目录执行 make clean
 `)
   .action(async (projectArg: string | undefined, opts: { quiet?: boolean }) => {
     const extraArgs = parseExtraArgs();
     const scanner = new WorkspaceScanner(process.cwd());
     const projects = scanner.scan();
+    const runner = new BuildRunner(projects, process.cwd());
+    const availableProjects = runner.getProjects();
 
     if (projectArg) {
-      const found = projects.find((p) => p.name === projectArg);
+      const found = availableProjects.find((p) => p.name === projectArg);
       if (!found) {
         console.error(chalk.red(`未找到工程 '${projectArg}'，运行 sydev clean 查看可用工程列表`));
         process.exit(1);
       }
-      const runner = new BuildRunner(projects, process.cwd());
       runner.ensureMakefile();
       runner.on('progress', (event: BuildProgressEvent) => {
         if (event.type === 'stdout-line') process.stdout.write(event.line + '\n');
@@ -55,19 +57,18 @@ export const cleanCommand = new Command('clean')
       }
     }
 
-    if (projects.length === 0) {
-      console.error(chalk.yellow('未找到工程（确认当前目录是 workspace 根目录，且工程子目录同时包含 .project 和 Makefile）'));
+    if (availableProjects.length === 0) {
+      console.error(chalk.yellow('未找到工程（确认当前目录是 workspace 根目录，且至少存在 base Makefile 或工程子目录同时包含 .project 和 Makefile）'));
       process.exit(1);
     }
 
-    const runner = new BuildRunner(projects, process.cwd());
     runner.ensureMakefile();
-    const { default: inquirer } = await import('inquirer');
+    const { default: inquirer } = await import('../utils/inquirer.js');
     const { selected } = await inquirer.prompt([{
       type: 'checkbox',
       name: 'selected',
       message: '选择要清理的工程：',
-      choices: projects.map((p) => ({ name: p.name, value: p })),
+      choices: availableProjects.map((p) => ({ name: p.name, value: p })),
       validate: (answer: readonly unknown[]) => answer.length > 0 ? true : '请至少选择一个',
     }]);
 

@@ -15,11 +15,14 @@ sydev device add
 
 ```bash
 sydev build
+sydev build base
 sydev build libcpu
 sydev build libcpu -- --parallel=4
 sydev build __demo
 sydev build init
+sydev clean base
 sydev clean libcpu
+sydev rebuild base
 sydev rebuild libcpu
 ```
 
@@ -60,8 +63,9 @@ sydev template apply --help
 
 - `build` / `clean` / `rebuild` 当前没有 `--all`
 - `build` 可以执行 `.sydev/Makefile` 中的构建模板，如 `sydev build __demo`
-- `.sydev/Makefile` 的工程 target 内部调用 `rl-build`
+- `.sydev/Makefile` 里 `base` target 使用 `make`，其它工程 target 调用 `rl-build`
 - `build` / `clean` / `rebuild` 执行前会自动同步目标工程 `config.mk` 里的 `SYLIXOS_BASE_PATH`
+- `workspace init` / `template apply` 可以通过 `baseComponents` 预先裁剪 base `Makefile` 的 `COMPONENTS`
 - `template` 管理的是配置模板，不是构建模板
 - `upload` 上传多个项目时必须显式传 `--device`
 - `template apply` 的 `<source>` 可以是模板 ID，也可以是 JSON 文件路径
@@ -79,6 +83,8 @@ sydev workspace init \
   --platforms ARM64_GENERIC,X86_64 \
   --os sylixos \
   --debug-level release \
+  --arm64-page-shift 14 \
+  --base-components libsylixos,openssl \
   --create-base
 ```
 

@@ -1,4 +1,5 @@
 import { BaseOptionParser, ValidationResult } from './base-parser.js';
+import { PLATFORMS } from '@sydev/core/constants.js';
 
 export interface DeviceOptions {
   name: string;
@@ -67,10 +68,7 @@ export class DeviceOptionParser extends BaseOptionParser<DeviceOptions> {
       errors.push('platforms must be a non-empty array');
     }
 
-    const validPlatforms = [
-      'ARM64_GENERIC', 'ARM64_A53', 'ARM64_A55', 'ARM64_A57', 'ARM64_A72',
-      'X86_64', 'RISCV_GC64', 'LOONGARCH64'
-    ];
+    const validPlatforms = PLATFORMS.map((platform) => platform.value);
     const invalidPlatforms = config.platforms.filter((p: string) => !validPlatforms.includes(p));
     if (invalidPlatforms.length > 0) {
       errors.push(

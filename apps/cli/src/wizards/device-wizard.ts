@@ -1,4 +1,4 @@
-import inquirer from 'inquirer';
+import inquirer from '../utils/inquirer.js';
 import chalk from 'chalk';
 import { ConfigManager } from '@sydev/core/config-manager.js';
 import { deviceSchema, type DeviceConfig } from '@sydev/core/schemas/device-schema.js';

@@ -92,7 +92,7 @@ describe('BuildRunner', () => {
     );
   });
 
-  it('生成的 Makefile 使用 rl-build，并且不再改写 config.mk', () => {
+  it('生成的 Makefile 中 base 使用 make，其它工程使用 rl-build，并且不再改写 config.mk', () => {
     const realevoDir = join(workspaceRoot, '.realevo');
     const basePath = join(realevoDir, 'base');
     const demoConfigMk = join(workspaceRoot, 'demo', 'config.mk');
@@ -107,7 +107,8 @@ describe('BuildRunner', () => {
     runner.ensureMakefile();
 
     const makefile = readFileSync(join(workspaceRoot, '.sydev', 'Makefile'), 'utf-8');
-    expect(makefile).toContain('bear --append -- rl-build build --project=base $(RL_BUILD_ARGS)');
+    expect(makefile).toContain('bear --append -- $(MAKE) -C $(WORKSPACE_base) $(BASE_BUILD_ARGS) all');
+    expect(makefile).toContain('$(MAKE) -C $(WORKSPACE_base) $(BASE_CLEAN_ARGS) clean');
     expect(makefile).toContain('bear --append -- rl-build build --project=demo $(RL_BUILD_ARGS)');
     expect(makefile).toContain('rl-build clean --project=demo $(RL_CLEAN_ARGS)');
     expect(readFileSync(demoConfigMk, 'utf-8')).toBe('SYLIXOS_BASE_PATH = /tmp/keep-me\nPLATFORM_NAME = OLD\n');
@@ -173,7 +174,34 @@ describe('BuildRunner', () => {
 
     expect(spawn).toHaveBeenCalledWith(
       'make',
-      ['-f', join(workspaceRoot, '.sydev', 'Makefile'), 'demo', 'RL_BUILD_ARGS=--parallel=4'],
+      ['-f', join(workspaceRoot, '.sydev', 'Makefile'), 'demo', 'RL_BUILD_ARGS=--parallel=4', 'BASE_BUILD_ARGS=-j4'],
+      { cwd: workspaceRoot, stdio: ['ignore', 'pipe', 'pipe'] }
+    );
+  });
+
+  it('base 编译时保留 make 原始参数，不转换成 rl-build 的 --parallel', async () => {
+    const mockProc = createMockProcess();
+    vi.mocked(spawn).mockReturnValue(mockProc);
+
+    const realevoDir = join(workspaceRoot, '.realevo');
+    const basePath = join(realevoDir, 'base');
+    mkdirSync(basePath, { recursive: true });
+    writeFileSync(join(realevoDir, 'config.json'), JSON.stringify({ base: basePath }), 'utf-8');
+    writeFileSync(join(basePath, 'Makefile'), 'all:\n\t@echo base\n', 'utf-8');
+
+    const runner = new BuildRunner([], workspaceRoot);
+    runner.ensureMakefile();
+
+    const baseProject = runner.getProjects().find((project) => project.name === 'base');
+    expect(baseProject).toBeDefined();
+
+    const promise = runner.buildOne(baseProject!, { extraArgs: ['-j4'] });
+    mockProc.emit('close', 0);
+    await promise;
+
+    expect(spawn).toHaveBeenCalledWith(
+      'make',
+      ['-f', join(workspaceRoot, '.sydev', 'Makefile'), 'base', 'RL_BUILD_ARGS=--parallel=4', 'BASE_BUILD_ARGS=-j4'],
       { cwd: workspaceRoot, stdio: ['ignore', 'pipe', 'pipe'] }
     );
   });

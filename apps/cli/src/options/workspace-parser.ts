@@ -1,4 +1,44 @@
-import { BaseOptionParser, ValidationResult } from './base-parser.js';
+import { BaseOptionParser, type ParsedOptions, ValidationResult } from './base-parser.js';
+import { BASE_COMPONENT_VALUES, PLATFORMS, REQUIRED_BASE_COMPONENTS } from '@sydev/core/constants.js';
+
+const ARM64_PAGE_SHIFT_VALUES = [12, 14, 16] as const;
+
+function hasArm64Platform(platforms: string[]): boolean {
+  return platforms.some((platform) => platform.startsWith('ARM64_'));
+}
+
+function parseArm64PageShift(raw: unknown): number | undefined {
+  if (raw === undefined || raw === null || raw === '') {
+    return undefined;
+  }
+
+  return typeof raw === 'number' ? raw : Number(raw);
+}
+
+function parseBaseComponents(raw: unknown): string[] | undefined {
+  if (raw === undefined || raw === null || raw === '') {
+    return undefined;
+  }
+
+  const values = Array.isArray(raw)
+    ? raw
+    : typeof raw === 'string'
+      ? raw.split(/[,\s\u3001\uff0c]+/)
+      : [];
+
+  const normalized = values
+    .filter((value): value is string => typeof value === 'string')
+    .map((value) => value.trim())
+    .flatMap((value) => value.split(/[,\s\u3001\uff0c]+/))
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  if (normalized.length === 0) {
+    return undefined;
+  }
+
+  return [...new Set(normalized)];
+}
 
 export interface WorkspaceOptions {
   cwd: string;
@@ -9,6 +49,8 @@ export interface WorkspaceOptions {
   debugLevel: 'release' | 'debug';
   createBase?: boolean;
   build?: boolean;
+  arm64PageShift?: number;
+  baseComponents?: string[];
   // For custom version
   customRepo?: string;
   customBranch?: string;
@@ -77,10 +119,7 @@ export class WorkspaceOptionParser extends BaseOptionParser<WorkspaceOptions> {
       errors.push('platforms must be a non-empty array');
     }
 
-    const validPlatforms = [
-      'ARM64_GENERIC', 'ARM64_A53', 'ARM64_A55', 'ARM64_A57', 'ARM64_A72',
-      'X86_64', 'RISCV_GC64', 'LOONGARCH64'
-    ];
+    const validPlatforms = PLATFORMS.map((platform) => platform.value);
     const invalidPlatforms = config.platforms.filter((p: string) => !validPlatforms.includes(p));
     if (invalidPlatforms.length > 0) {
       errors.push(
@@ -96,6 +135,34 @@ export class WorkspaceOptionParser extends BaseOptionParser<WorkspaceOptions> {
     // debugLevel 验证
     if (!['release', 'debug'].includes(config.debugLevel)) {
       errors.push('debugLevel must be "release" or "debug"');
+    }
+
+    if (config.arm64PageShift !== undefined) {
+      if (!Number.isInteger(config.arm64PageShift) || !ARM64_PAGE_SHIFT_VALUES.includes(config.arm64PageShift as 12 | 14 | 16)) {
+        errors.push('arm64PageShift must be one of: 12, 14, 16');
+      } else if (!hasArm64Platform(config.platforms)) {
+        errors.push('arm64PageShift requires at least one ARM64 platform');
+      }
+    }
+
+    if (config.baseComponents !== undefined) {
+      if (!Array.isArray(config.baseComponents) || config.baseComponents.length === 0) {
+        errors.push('baseComponents must contain at least one component');
+      }
+
+      const invalidComponents = (config.baseComponents ?? []).filter(
+        (component) => !BASE_COMPONENT_VALUES.includes(component as typeof BASE_COMPONENT_VALUES[number])
+      );
+      if (invalidComponents.length > 0) {
+        errors.push(`baseComponents contains unsupported components: ${invalidComponents.join(', ')}`);
+      }
+
+      const missingRequired = REQUIRED_BASE_COMPONENTS.filter(
+        (component) => !(config.baseComponents ?? []).includes(component)
+      );
+      if (missingRequired.length > 0) {
+        errors.push(`baseComponents must include required components: ${missingRequired.join(', ')}`);
+      }
     }
 
     return {
@@ -124,10 +191,33 @@ export class WorkspaceOptionParser extends BaseOptionParser<WorkspaceOptions> {
       debugLevel: options.debugLevel || options['debug-level'] || this.defaults.debugLevel,
       createBase: options.createBase !== undefined ? options.createBase : this.defaults.createBase,
       build: options.build !== undefined ? options.build : this.defaults.build,
+      arm64PageShift: parseArm64PageShift(options.arm64PageShift ?? options['arm64-page-shift']),
+      baseComponents: parseBaseComponents(options.baseComponents ?? options['base-components']),
       customRepo: options.customRepo || options['custom-repo'],
       customBranch: options.customBranch || options['custom-branch'],
       researchBranch: options.researchBranch || options['research-branch'],
     };
+  }
+
+  parse(options: Record<string, any>): ParsedOptions<WorkspaceOptions> {
+    let config: WorkspaceOptions;
+    const raw = { ...options };
+
+    if (options.config) {
+      const fileConfig = this.loadJsonConfig(options.config);
+      const merged = this.mergeOptions(fileConfig, options) as Record<string, any>;
+      config = this.parseCliOptions(merged);
+    } else {
+      config = this.parseCliOptions(options);
+    }
+
+    const validation = this.validate(config);
+    if (!validation.valid) {
+      const errorMsg = validation.errors.join('\n  ');
+      throw new Error(`Validation failed:\n  ${errorMsg}`);
+    }
+
+    return { config, raw };
   }
 
   /**
@@ -144,6 +234,8 @@ export class WorkspaceOptionParser extends BaseOptionParser<WorkspaceOptions> {
         debugLevel: opts.debugLevel,
         createbase: opts.createBase,
         build: opts.build,
+        arm64PageShift: opts.arm64PageShift,
+        baseComponents: opts.baseComponents,
         ...(opts.version === 'custom' && {
           customRepo: opts.customRepo,
           customBranch: opts.customBranch,

@@ -31,18 +31,21 @@ export const buildCommand = new Command('build')
 \u793a\u4f8b:
   $ sydev build                  # \u4ea4\u4e92\u5f0f\u9009\u62e9\u5de5\u7a0b\u6216\u6a21\u677f
   $ sydev build libcpu           # \u7f16\u8bd1\u6307\u5b9a\u5de5\u7a0b
+  $ sydev build base             # \u5728 base \u76ee\u5f55\u6267\u884c make all
   $ sydev build init             # \u751f\u6210/\u66f4\u65b0 .sydev/Makefile
   $ sydev build init --default   # \u4ece\u5934\u91cd\u65b0\u751f\u6210 Makefile
   $ sydev build libcpu -- --parallel=4   # \u900f\u4f20 rl-build build \u53c2\u6570
+  $ sydev build base -- -j4      # \u900f\u4f20 make \u53c2\u6570\u7ed9 base
 `)
   .action(async (projectArg: string | undefined, opts: { quiet?: boolean }) => {
     const extraArgs = parseExtraArgs();
     const scanner = new WorkspaceScanner(process.cwd());
     const projects = scanner.scan();
+    const runner = new BuildRunner(projects, process.cwd());
+    const availableProjects = runner.getProjects();
 
     // \u6709\u5de5\u7a0b\u540d\u53c2\u6570\uff1a\u5355\u5de5\u7a0b\u7f16\u8bd1
     if (projectArg) {
-      const runner = new BuildRunner(projects, process.cwd());
       runner.ensureMakefile();
       runner.on('progress', (event: BuildProgressEvent) => {
         if (event.type === 'stdout-line') process.stdout.write(event.line + '\n');
@@ -51,7 +54,7 @@ export const buildCommand = new Command('build')
       });
 
       // 先找工程，找不到再找模板
-      const found = projects.find((p) => p.name === projectArg);
+      const found = availableProjects.find((p) => p.name === projectArg);
       const templates = runner.parseUserTemplates();
       const isTemplate = !found && templates.includes(projectArg);
 
@@ -76,15 +79,14 @@ export const buildCommand = new Command('build')
       }
     }
     // \u65e0\u53c2\u6570\uff1a\u4ea4\u4e92\u5f0f\u9009\u62e9
-    if (projects.length === 0) {
-      console.error(chalk.yellow('\u672a\u627e\u5230\u5de5\u7a0b\uff08\u786e\u8ba4\u5f53\u524d\u76ee\u5f55\u662f workspace \u6839\u76ee\u5f55\uff0c\u4e14\u5de5\u7a0b\u5b50\u76ee\u5f55\u540c\u65f6\u5305\u542b .project \u548c Makefile\uff09'));
+    if (availableProjects.length === 0) {
+      console.error(chalk.yellow('\u672a\u627e\u5230\u5de5\u7a0b\uff08\u786e\u8ba4\u5f53\u524d\u76ee\u5f55\u662f workspace \u6839\u76ee\u5f55\uff0c\u4e14\u81f3\u5c11\u5b58\u5728 base Makefile \u6216\u5de5\u7a0b\u5b50\u76ee\u5f55\u540c\u65f6\u5305\u542b .project \u548c Makefile\uff09'));
       process.exit(1);
     }
-    const runner = new BuildRunner(projects, process.cwd());
     runner.ensureMakefile();
     const templates = runner.parseUserTemplates();
-    const { default: inquirer } = await import('inquirer');
-    const choices: { name: string; value: unknown }[] = projects.map((p) => ({ name: p.name, value: p }));
+    const { default: inquirer } = await import('../utils/inquirer.js');
+    const choices: { name: string; value: unknown }[] = availableProjects.map((p) => ({ name: p.name, value: p }));
     if (templates.length > 0) {
       choices.push(new inquirer.Separator('\u2500\u2500 \u7f16\u8bd1\u6a21\u677f \u2500\u2500') as unknown as { name: string; value: unknown });
       for (const t of templates) {
@@ -135,17 +137,18 @@ export const buildCommand = new Command('build')
 // build init \u5b50\u547d\u4ee4
 buildCommand
   .command('init')
-  .description('\u751f\u6210/\u66f4\u65b0 .sydev/Makefile\uff08\u5de5\u7a0b target \u5185\u90e8\u8c03\u7528 rl-build\uff09')
+  .description('\u751f\u6210/\u66f4\u65b0 .sydev/Makefile\uff08base target \u7528 make\uff0c\u5176\u5b83\u5de5\u7a0b target \u8c03\u7528 rl-build\uff09')
   .option('--default', '\u4ece\u5934\u91cd\u65b0\u751f\u6210 Makefile\uff08\u8986\u76d6\u7528\u6237\u4fee\u6539\uff09')
   .action(async (opts: { default?: boolean }) => {
     const scanner = new WorkspaceScanner(process.cwd());
     const projects = scanner.scan();
-    if (projects.length === 0) {
-      console.error(chalk.yellow('\u672a\u627e\u5230\u5de5\u7a0b\uff08\u786e\u8ba4\u5f53\u524d\u76ee\u5f55\u662f workspace \u6839\u76ee\u5f55\uff0c\u4e14\u5de5\u7a0b\u5b50\u76ee\u5f55\u540c\u65f6\u5305\u542b .project \u548c Makefile\uff09'));
+    const runner = new BuildRunner(projects, process.cwd());
+    const availableProjects = runner.getProjects();
+    if (availableProjects.length === 0) {
+      console.error(chalk.yellow('\u672a\u627e\u5230\u5de5\u7a0b\uff08\u786e\u8ba4\u5f53\u524d\u76ee\u5f55\u662f workspace \u6839\u76ee\u5f55\uff0c\u4e14\u81f3\u5c11\u5b58\u5728 base Makefile \u6216\u5de5\u7a0b\u5b50\u76ee\u5f55\u540c\u65f6\u5305\u542b .project \u548c Makefile\uff09'));
       process.exit(1);
     }
-    const runner = new BuildRunner(projects, process.cwd());
     runner.ensureMakefile(opts.default);
     console.log(chalk.green('\u2713 Makefile \u5df2\u751f\u6210: .sydev/Makefile'));
-    console.log(chalk.dim(`  \u5305\u542b ${projects.length} \u4e2a\u5de5\u7a0b target\uff0c\u53ef\u76f4\u63a5\u8fd0\u884c make -f .sydev/Makefile <\u5de5\u7a0b\u540d>\uff08\u5185\u90e8\u4f7f\u7528 rl-build\uff09`));
+    console.log(chalk.dim(`  \u5305\u542b ${availableProjects.length} \u4e2a\u5de5\u7a0b target\uff0c\u5176\u4e2d base \u4f7f\u7528 make\uff0c\u5176\u4ed6\u5de5\u7a0b\u4f7f\u7528 rl-build`));
   });

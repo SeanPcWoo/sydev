@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
-import inquirer from 'inquirer';
+import inquirer from '../utils/inquirer.js';
 import { readFileSync } from 'fs';
 import { ConfigManager } from '@sydev/core/config-manager.js';
 import { InitOrchestrator } from '@sydev/core/init-orchestrator.js';

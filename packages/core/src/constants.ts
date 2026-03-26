@@ -71,3 +71,42 @@ export const PLATFORMS = [
   { name: 'SW6B -- SW6B', value: 'SW6B' },
   { name: 'SW6B -- SW6B_SOFT', value: 'SW6B_SOFT' }
 ];
+
+/**
+ * SylixOS base 默认组件列表
+ * 对应 base/Makefile 中的 COMPONENTS
+ */
+export const BASE_COMPONENT_VALUES = [
+  'libsylixos',
+  'libcextern',
+  'libVxWorks',
+  'libreadline',
+  'liblua',
+  'libsqlite3',
+  'pciutils',
+  'libzmodem',
+  'libexpat',
+  'libluaplugin',
+  'libsunrpc',
+  'unfsd',
+  'libsalsa',
+  'libpcap',
+  'openssl',
+  'libcurl',
+  'libffi',
+  'libwayland',
+  'libgtest',
+  'tcpdump',
+  'zlib',
+  'libarchive',
+  'openssh',
+] as const;
+
+export const REQUIRED_BASE_COMPONENTS = [
+  'libsylixos',
+] as const;
+
+export const BASE_COMPONENTS = BASE_COMPONENT_VALUES.map((value) => ({
+  name: value,
+  value,
+}));

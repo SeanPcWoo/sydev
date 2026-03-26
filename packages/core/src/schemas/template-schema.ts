@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { workspaceSchema } from './workspace-schema.js';
+import { validateWorkspaceConfig, workspaceSchemaObject } from './workspace-schema.js';
 import { projectSchema } from './project-schema.js';
 import { deviceSchema } from './device-schema.js';
 import { fullConfigSchema } from './full-config-schema.js';
@@ -20,10 +20,12 @@ export const templateIndexSchema = z.object({
 });
 
 // 模板存储用 schema：cwd/basePath 在应用时提供，保存时可选
-const workspaceTemplateSchema = workspaceSchema.extend({
-  cwd: z.string().optional(),
-  basePath: z.string().optional(),
-});
+const workspaceTemplateSchema = workspaceSchemaObject
+  .extend({
+    cwd: z.string().optional(),
+    basePath: z.string().optional(),
+  })
+  .superRefine(validateWorkspaceConfig);
 
 const fullConfigTemplateSchema = z.object({
   schemaVersion: z.literal(1).default(1),

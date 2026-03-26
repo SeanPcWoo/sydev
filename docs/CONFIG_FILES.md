@@ -11,6 +11,8 @@
 - `platforms`
 - `createBase`
 - `debugLevel`
+- `arm64PageShift`
+- `baseComponents`
 
 ### `sydev init` 和 full 模板使用的是“完整配置风格”
 
@@ -54,10 +56,39 @@ sydev workspace init --config workspace.json
   "platforms": ["ARM64_GENERIC", "X86_64"],
   "os": "sylixos",
   "debugLevel": "release",
+  "arm64PageShift": 14,
+  "baseComponents": ["libsylixos", "openssl"],
   "createBase": true,
   "build": false
 }
 ```
+
+`arm64PageShift` 是可选字段，仅在选择 ARM64 平台时生效：
+
+- `12` 表示 4K 页
+- `14` 表示 16K 页
+- `16` 表示 64K 页
+
+`baseComponents` 也是可选字段，用来限制 base 的编译组件范围：
+
+- 不填时表示按 base 默认 `COMPONENTS` 全量编译
+- 填写后会在 base 构造完成后，改写 `base/Makefile` 里的 `COMPONENTS`
+- 只保留选中的组件，未选中的默认组件会以注释形式保留在文件里
+- `libsylixos` 必须保留
+- 示例值：`["libsylixos", "openssl", "tcpdump"]`
+
+这两个字段都支持非交互方式：
+
+- `sydev workspace init --arm64-page-shift ... --base-components ...`
+- `sydev workspace init --config workspace.json`
+- `sydev init --config full-config.json`
+- `sydev template apply config.json -y`
+
+`build` 设为 `true` 时，实际行为是：
+
+- 先用不编译模式构造 workspace/base
+- 等 base 构造完成后，再单独进入 base 目录执行 `make all`
+- 这个 base `make all` 当前不设置超时
 
 ### 可选附加字段
 
@@ -156,7 +187,9 @@ sydev init --config full-config.json
     "createbase": true,
     "build": false,
     "debugLevel": "release",
-    "os": "sylixos"
+    "os": "sylixos",
+    "arm64PageShift": 14,
+    "baseComponents": ["libsylixos", "openssl"]
   },
   "projects": [
     {
@@ -187,6 +220,10 @@ sydev init --config full-config.json
 - 若 `workspace.cwd` 或 `workspace.basePath` 未提供，`sydev init` 会在执行前提示输入
 - `workspace.platform` 是数组字段，不是 `platforms`
 - `workspace.createbase` 是小写字段，不是 `createBase`
+- `workspace.arm64PageShift` 仅在 ARM64 平台下可选，值只能是 `12`、`14`、`16`
+- `workspace.baseComponents` 是字符串数组，用来指定 base `Makefile` 中要保留编译的组件
+- `workspace.version = "custom"` 时，可在同级追加 `workspace.customRepo` 和 `workspace.customBranch`
+- `workspace.version = "research"` 时，可在同级追加 `workspace.researchBranch`
 
 ## template import 与 template apply 支持的文件格式
 
@@ -223,7 +260,9 @@ sydev init --config full-config.json
       "createbase": true,
       "build": false,
       "debugLevel": "release",
-      "os": "sylixos"
+      "os": "sylixos",
+      "arm64PageShift": 14,
+      "baseComponents": ["libsylixos", "openssl"]
     }
   }
 }
@@ -242,7 +281,9 @@ sydev init --config full-config.json
       "createbase": true,
       "build": false,
       "debugLevel": "release",
-      "os": "sylixos"
+      "os": "sylixos",
+      "arm64PageShift": 14,
+      "baseComponents": ["libsylixos", "openssl"]
     }
   }
 }
@@ -259,7 +300,9 @@ sydev init --config full-config.json
     "createbase": true,
     "build": false,
     "debugLevel": "release",
-    "os": "sylixos"
+    "os": "sylixos",
+    "arm64PageShift": 14,
+    "baseComponents": ["libsylixos", "openssl"]
   }
 }
 ```

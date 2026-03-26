@@ -99,6 +99,14 @@ sydev template import sydev-config.json
 sydev template apply sydev-config.json --cwd /path/to/new-ws --base-path /path/to/new-base -y
 ```
 
+## 0.4.12 更新
+
+- `workspace init`、`sydev init --config`、`template apply` 都支持 ARM64 页大小配置与 Base 编译组件裁剪
+- ARM64 页大小会在 base 构造完成且 `libsylixos` 就绪后，再修改 `libsylixos/SylixOS/config/cpu/cpu_cfg_arm64.h`
+- Base 若选择编译，`rl-workspace` 阶段始终按“不编译”构造，待 base 准备完成后再进入 base 目录执行 `make all`
+- Base 编译组件交互列表与非交互配置都支持部分编译；`libsylixos` 固定必选，`libcextern` 改为可选
+- `template` 创建时的平台列表已与 `workspace init` / `device add` 使用同一套完整平台常量
+
 ## 两套“模板”要分清
 
 ### 配置模板：`sydev template`
@@ -140,6 +148,7 @@ sydev build __demo
 - [Upload 使用指南](./docs/UPLOAD_GUIDE.md)
 - [快速参考卡片](./docs/QUICK_REFERENCE.md)
 - [Skill / IDE 集成指南](./docs/SKILL_INTEGRATION.md)
+- [仓库内置 SylixOS Skill](./skills/sylixos-dev/SKILL.md)
 
 ## 内置帮助
 

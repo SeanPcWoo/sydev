@@ -2,9 +2,11 @@
   "version": "default",
   "cwd": "/home/user/my-workspace",
   "basePath": "/home/user/my-workspace/.realevo/base",
-  "platform": ["ARM64_GENERIC", "X86_64"],
+  "platforms": ["ARM64_GENERIC", "X86_64"],
   "os": "sylixos",
   "debugLevel": "release",
-  "createbase": true,
+  "arm64PageShift": 14,
+  "baseComponents": ["libsylixos", "openssl"],
+  "createBase": true,
   "build": false
 }

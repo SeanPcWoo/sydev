@@ -35,7 +35,7 @@
 - 只要传了任意业务参数，或只传了 `--config`，就会进入非交互模式
 - 对这三类命令，命令行参数优先级高于 JSON 配置文件
 
-### 透传 rl-build 参数
+### 透传构建参数
 
 `build`、`clean`、`rebuild` 都支持通过 `-- <args>` 继续透传参数。
 
@@ -44,12 +44,14 @@
 ```bash
 sydev build libcpu -- --parallel=4
 sydev rebuild libcpu -- --parallel=8
+sydev build base -- -j4
 ```
 
 兼容说明：
 
 - `build` / `rebuild` 中常见的 `-j4`、`--jobs=4` 会自动转换成 `rl-build build --parallel=4`
 - `clean` 的透传参数会原样附加到 `rl-build clean`
+- `base` 目标不走 `rl-build`，而是在 base 目录执行 `make`，因此会保留原始参数，例如 `-j4`
 
 ### 项目识别规则
 
@@ -76,6 +78,8 @@ sydev rebuild libcpu -- --parallel=8
 | `--platforms <platforms>` | 目标平台，逗号分隔 |
 | `--os <os>` | `sylixos` 或 `linux` |
 | `--debug-level <level>` | `release` 或 `debug` |
+| `--arm64-page-shift <shift>` | ARM64 页偏移，支持 `12`/`14`/`16` |
+| `--base-components <components>` | Base 编译组件，逗号分隔，例如 `libsylixos,openssl` |
 | `--custom-repo <repo>` | `version=custom` 时需要 |
 | `--custom-branch <branch>` | `version=custom` 时需要 |
 | `--research-branch <branch>` | `version=research` 时需要 |
@@ -90,13 +94,20 @@ sydev rebuild libcpu -- --parallel=8
 - 非交互模式下，命令行参数会覆盖 JSON 配置文件中的同名字段
 - `version=custom` 时需要额外提供 `customRepo` 和 `customBranch`
 - `version=research` 时需要额外提供 `researchBranch`
+- 选择 ARM64 平台时可额外指定 `--arm64-page-shift`，其中 `12`=4K、`14`=16K、`16`=64K
+- 选择 `--base-components` 时，会在 base 构造完成后修改 `base/Makefile` 里的 `COMPONENTS` 变量，只保留选中的组件，未选中的组件会被注释保留
+- 交互模式下会像平台一样以多选列表列出默认 base 组件；其中 `libsylixos` 会固定勾选且不可取消
+- 非交互模式同样支持这两个功能：`workspace init` 可直接传 `--arm64-page-shift` / `--base-components`，也可放进 `--config` JSON；`sydev init --config` 和 `template apply <json> -y` 使用的是 `workspace.arm64PageShift` / `workspace.baseComponents`
+- 即使指定了 `--build`，`rl-workspace` 阶段也会固定使用不编译模式；只有在 base 构造完成后，才会单独进入 base 目录执行 `make all`
+- base 的 `make all` 当前不设置超时；`rl-workspace` 等其它命令仍保留各自的超时控制
+- 如果用户选择了编译，且 `rl-workspace` 返回失败，只要 base 已构造出来，仍会继续尝试执行 `make all`
 
 #### 示例
 
 ```bash
 sydev workspace init
 sydev workspace init --config workspace.json
-sydev workspace init --cwd /ws --base-path /ws/.realevo/base --version lts_3.6.5 --platforms ARM64_GENERIC,X86_64 --os sylixos --debug-level release --create-base --build
+sydev workspace init --cwd /ws --base-path /ws/.realevo/base --version lts_3.6.5 --platforms ARM64_GENERIC,X86_64 --os sylixos --debug-level release --arm64-page-shift 14 --base-components libsylixos,openssl --create-base --build
 sydev workspace init --config workspace.json --platforms X86_64
 ```
 
@@ -239,13 +250,14 @@ sydev device list
 | --- | --- |
 | `[project]` | 项目名，或 `.sydev/Makefile` 中的用户构建模板名 |
 | `--quiet` | 静默模式，不实时透传构建输出 |
-| `-- <args>` | 透传给 `rl-build build` 的额外参数 |
+| `-- <args>` | 普通工程透传给 `rl-build build`，`base` 透传给 base 目录下的 `make all` |
 
 #### 行为说明
 
 - 无参数时会弹出多选框
 - 交互模式里除了项目，还会列出 `.sydev/Makefile` 中可识别的用户构建模板
 - 指定 `project` 参数时，先按项目名匹配，找不到再按构建模板名匹配
+- `project=base` 时会在 base 目录执行 `make all`
 - 执行前会把目标工程 `config.mk` 里的 `SYLIXOS_BASE_PATH` 同步为当前 workspace 的 base 路径
 - 当前没有 `--all` 选项
 
@@ -253,16 +265,18 @@ sydev device list
 
 ```bash
 sydev build
+sydev build base
 sydev build libcpu
 sydev build __demo
 sydev build libcpu --quiet
 sydev build libcpu -- --parallel=4
+sydev build base -- -j4
 sydev build libcpu -- -j4
 ```
 
 ### `sydev build init`
 
-生成或更新 `.sydev/Makefile`，让你可以脱离 sydev 直接使用 `make -f .sydev/Makefile <target>`。工程 target 内部实际调用的是 `rl-build`。
+生成或更新 `.sydev/Makefile`，让你可以脱离 sydev 直接使用 `make -f .sydev/Makefile <target>`。其中 `base` target 在 base 目录执行 `make`，其它工程 target 内部调用 `rl-build`。
 
 #### 选项
 
@@ -277,6 +291,7 @@ sydev build init
 sydev build init --default
 make -f .sydev/Makefile libcpu
 make -f .sydev/Makefile libcpu RL_BUILD_ARGS='--parallel=4'
+make -f .sydev/Makefile base BASE_BUILD_ARGS='-j4'
 ```
 
 ## clean
@@ -291,11 +306,12 @@ make -f .sydev/Makefile libcpu RL_BUILD_ARGS='--parallel=4'
 | --- | --- |
 | `[project]` | 项目名 |
 | `--quiet` | 静默模式，不实时透传命令输出 |
-| `-- <args>` | 透传给 `rl-build clean` 的额外参数 |
+| `-- <args>` | 普通工程透传给 `rl-build clean`，`base` 透传给 base 目录下的 `make clean` |
 
 #### 行为说明
 
 - 无参数时弹出项目多选
+- `project=base` 时会在 base 目录执行 `make clean`
 - 执行前会把目标工程 `config.mk` 里的 `SYLIXOS_BASE_PATH` 同步为当前 workspace 的 base 路径
 - 当前没有 `--all`
 
@@ -303,6 +319,7 @@ make -f .sydev/Makefile libcpu RL_BUILD_ARGS='--parallel=4'
 
 ```bash
 sydev clean
+sydev clean base
 sydev clean libcpu
 ```
 
@@ -318,11 +335,12 @@ sydev clean libcpu
 | --- | --- |
 | `[project]` | 项目名 |
 | `--quiet` | 静默模式，不实时透传构建输出 |
-| `-- <args>` | 透传给 `rl-build build` 的额外参数 |
+| `-- <args>` | 普通工程透传给 `rl-build build`，`base` 透传给 base 目录下的 `make` |
 
 #### 行为说明
 
 - 无参数时弹出项目多选
+- `project=base` 时会在 base 目录执行 `make clean && make all`
 - 执行前会把目标工程 `config.mk` 里的 `SYLIXOS_BASE_PATH` 同步为当前 workspace 的 base 路径
 - 当前没有 `--all`
 
@@ -330,8 +348,10 @@ sydev clean libcpu
 
 ```bash
 sydev rebuild
+sydev rebuild base
 sydev rebuild libcpu
 sydev rebuild libcpu -- --parallel=4
+sydev rebuild base -- -j4
 sydev rebuild libcpu -- -j4
 ```
 

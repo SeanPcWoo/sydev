@@ -38,7 +38,10 @@ sydev template apply --help
 - 补全 `template apply` 的 JSON 文件、`--cwd`、`--base-path`、`-y` 文档
 - 补全 `workspace/project/device` 的 `--config` 用法与 JSON 结构
 - 明确 `build` 的“构建模板”和 `template` 的“配置模板”是两套不同概念
-- 补充 `.sydev/Makefile` 改为调用 `rl-build`，以及 `build` / `clean` / `rebuild` 执行前自动同步 `SYLIXOS_BASE_PATH`
+- 补充 `workspace` / `template` / `full` 配置中的 ARM64 页大小与 `baseComponents` 用法
+- 补充 `.sydev/Makefile` 中 `base` target 使用 `make`、其它工程调用 `rl-build`，以及 `build` / `clean` / `rebuild` 执行前自动同步 `SYLIXOS_BASE_PATH`
+- 同步 `template` 与 `workspace/device` 的平台列表来源，避免交互与非交互支持范围不一致
+- 明确 `baseComponents` 中只有 `libsylixos` 为固定必选项，`libcextern` 为可选项
 
 ## 需要记住的几个事实
 

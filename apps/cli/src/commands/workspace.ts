@@ -5,7 +5,7 @@ import { WorkspaceOptionParser, generateHelpExample } from '../options/index.js'
 
 const helpExamples = {
   '交互式初始化 (推荐)': 'sydev workspace init',
-  '完整命令行参数': 'sydev workspace init --cwd /path/to/ws --base-path /path/to/base --version default --platforms ARM64_GENERIC,X86_64 --os sylixos --debug-level release --create-base --build',
+  '完整命令行参数': 'sydev workspace init --cwd /path/to/ws --base-path /path/to/base --version default --platforms ARM64_GENERIC,X86_64 --os sylixos --debug-level release --arm64-page-shift 14 --base-components libsylixos,openssl --create-base --build',
   '使用配置文件': 'sydev workspace init --config workspace.json',
   '配置文件 + 命令行覆盖': 'sydev workspace init --config workspace.json --platforms X86_64',
 };
@@ -23,6 +23,8 @@ workspaceCommand
   .option('--platforms <platforms>', '目标平台，逗号分隔 (ARM64_GENERIC,X86_64 等)')
   .option('--os <os>', '操作系统 (sylixos|linux)')
   .option('--debug-level <level>', '调试级别 (release|debug)')
+  .option('--arm64-page-shift <shift>', 'ARM64 页偏移 (12=4K, 14=16K, 16=64K)')
+  .option('--base-components <components>', 'Base 编译组件，逗号分隔 (如 libsylixos,openssl；其中 libsylixos 必选)')
   .option('--custom-repo <repo>', '自定义仓库地址 (version=custom 时需要)')
   .option('--custom-branch <branch>', '自定义仓库分支 (version=custom 时需要)')
   .option('--research-branch <branch>', 'Research 分支 (version=research 时需要)')
@@ -49,6 +51,8 @@ workspaceCommand
           platform: config.platforms,
           os: config.os,
           debugLevel: config.debugLevel,
+          arm64PageShift: config.arm64PageShift,
+          baseComponents: config.baseComponents,
           createbase: config.createBase,
           build: config.build,
           ...(config.version === 'custom' && {
@@ -91,4 +95,3 @@ workspaceCommand
       console.log(chalk.dim('  运行 sydev workspace init 开始初始化'));
     }
   });
-

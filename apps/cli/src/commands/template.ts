@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import inquirer from 'inquirer';
+import inquirer from '../utils/inquirer.js';
 import chalk from 'chalk';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { execSync } from 'child_process';
@@ -41,6 +41,7 @@ import { ConfigReader } from '@sydev/core/config-reader.js';
 import { WorkspaceScanner } from '@sydev/core/workspace-scanner.js';
 import { RlWrapper } from '@sydev/core/rl-wrapper.js';
 import { InitOrchestrator } from '@sydev/core/init-orchestrator.js';
+import { BASE_COMPONENT_VALUES, PLATFORMS, REQUIRED_BASE_COMPONENTS } from '@sydev/core/constants.js';
 import { deviceSchema, fullConfigSchema, projectSchema } from '@sydev/core/schemas/index.js';
 import type { TemplateType } from '@sydev/core/template-manager.js';
 import type { DeviceConfig, FullConfig, ProjectConfig } from '@sydev/core/schemas/index.js';
@@ -53,6 +54,64 @@ const TEMPLATE_TYPES: { name: string; value: TemplateType }[] = [
   { name: 'device - 设备模板', value: 'device' },
   { name: 'full - 全流程模板', value: 'full' },
 ];
+const ARM64_PAGE_SHIFT_CHOICES = [
+  { name: '4K 页 (页偏移 12)', value: 12 },
+  { name: '16K 页 (页偏移 14)', value: 14 },
+  { name: '64K 页 (页偏移 16)', value: 16 },
+] as const;
+const REQUIRED_BASE_COMPONENT_SET = new Set<string>(REQUIRED_BASE_COMPONENTS);
+
+function hasArm64Platform(platforms: unknown): boolean {
+  return Array.isArray(platforms)
+    && platforms.some((platform) => typeof platform === 'string' && platform.startsWith('ARM64_'));
+}
+
+function formatArm64PageShift(shift: number): string {
+  if (shift === 14) return '16K 页 (页偏移 14)';
+  if (shift === 16) return '64K 页 (页偏移 16)';
+  return '4K 页 (页偏移 12)';
+}
+
+function normalizeBaseComponents(components: readonly unknown[] | undefined): string[] | undefined {
+  if (components === undefined) {
+    return undefined;
+  }
+
+  const normalized = [...REQUIRED_BASE_COMPONENTS, ...components]
+    .map((value) => {
+      if (typeof value === 'string') {
+        return value.trim();
+      }
+      if (value && typeof value === 'object' && 'value' in value && typeof (value as { value?: unknown }).value === 'string') {
+        return (value as { value: string }).value.trim();
+      }
+      return '';
+    })
+    .filter(Boolean);
+
+  if (normalized.length === 0) {
+    return undefined;
+  }
+
+  const deduped = [...new Set(normalized)];
+  return deduped.length === BASE_COMPONENT_VALUES.length ? undefined : deduped;
+}
+
+function buildBaseComponentChoices(selected?: readonly string[]) {
+  const selectedSet = new Set(selected?.length ? selected : BASE_COMPONENT_VALUES);
+  return BASE_COMPONENT_VALUES.map((component) => ({
+    name: REQUIRED_BASE_COMPONENT_SET.has(component) ? `${component} (必选)` : component,
+    value: component,
+    checked: REQUIRED_BASE_COMPONENT_SET.has(component) || selectedSet.has(component),
+    disabled: REQUIRED_BASE_COMPONENT_SET.has(component) ? '必选' : false,
+  }));
+}
+
+function formatBaseComponents(components?: string[]): string {
+  return !components?.length || components.length === BASE_COMPONENT_VALUES.length
+    ? '全部'
+    : components.join(', ');
+}
 
 /** Get global template directory */
 function getGlobalTemplateDir(): string {
@@ -336,8 +395,13 @@ templateCommand
       console.log(chalk.cyan('\n  ◆ Workspace'));
       if (ws.platform) console.log(`    平台:     ${Array.isArray(ws.platform) ? ws.platform.join(', ') : ws.platform}`);
       if (ws.version) console.log(`    版本:     ${ws.version}`);
+      if (ws.customRepo) console.log(`    自定义仓库: ${ws.customRepo}`);
+      if (ws.customBranch) console.log(`    自定义分支: ${ws.customBranch}`);
+      if (ws.researchBranch) console.log(`    Research 分支: ${ws.researchBranch}`);
       if (ws.debugLevel) console.log(`    调试级别: ${ws.debugLevel}`);
       if (ws.os) console.log(`    操作系统: ${ws.os}`);
+      if (ws.arm64PageShift !== undefined) console.log(`    ARM64 页大小: ${formatArm64PageShift(ws.arm64PageShift)}`);
+      if (ws.baseComponents?.length) console.log(`    Base 编译组件: ${formatBaseComponents(ws.baseComponents)}`);
       if (ws.createbase !== undefined) console.log(`    创建 Base: ${ws.createbase ? '是' : '否'}`);
       if (ws.build !== undefined) console.log(`    编译 Base: ${ws.build ? '是' : '否'}`);
     }
@@ -559,7 +623,19 @@ templateCommand
     const reader = new ConfigReader(wsRoot);
     const wsStatus = reader.getWorkspaceStatus();
 
-    let wsConfig: { platform: string[]; version: string; debugLevel: string; os: string; createbase?: boolean; build?: boolean };
+    let wsConfig: {
+      platform: string[];
+      version: string;
+      debugLevel: string;
+      os: string;
+      createbase?: boolean;
+      build?: boolean;
+      arm64PageShift?: number;
+      baseComponents?: string[];
+      customRepo?: string;
+      customBranch?: string;
+      researchBranch?: string;
+    };
 
     if (wsStatus.configured && wsStatus.config) {
       wsConfig = wsStatus.config;
@@ -601,6 +677,12 @@ templateCommand
     console.log(`  版本:     ${wsConfig.version}`);
     console.log(`  调试级别: ${wsConfig.debugLevel}`);
     console.log(`  操作系统: ${wsConfig.os}`);
+    if (wsConfig.arm64PageShift !== undefined) {
+      console.log(`  ARM64 页大小: ${formatArm64PageShift(wsConfig.arm64PageShift)}`);
+    }
+    if (wsConfig.baseComponents?.length) {
+      console.log(`  Base 编译组件: ${formatBaseComponents(wsConfig.baseComponents)}`);
+    }
 
     // 2. 扫描项目
     const scanner = new WorkspaceScanner(wsRoot);
@@ -678,6 +760,11 @@ templateCommand
       version: wsConfig.version,
       debugLevel: wsConfig.debugLevel,
       os: wsConfig.os,
+      arm64PageShift: wsConfig.arm64PageShift,
+      baseComponents: wsConfig.baseComponents,
+      customRepo: wsConfig.customRepo,
+      customBranch: wsConfig.customBranch,
+      researchBranch: wsConfig.researchBranch,
       createbase: wsConfig.createbase ?? true,
       build: wsConfig.build ?? false,
     };
@@ -687,8 +774,51 @@ templateCommand
         { type: 'confirm', name: 'createbase', message: '创建新 Base?', default: exportWs.createbase },
         { type: 'confirm', name: 'build', message: '编译 Base?', default: exportWs.build },
         { type: 'list', name: 'debugLevel', message: '调试级别:', choices: ['release', 'debug'], default: exportWs.debugLevel },
-      ]);
-      exportWs = { ...exportWs, ...adjusted };
+        {
+          type: 'input',
+          name: 'researchBranch',
+          message: 'research 仓库分支:',
+          default: exportWs.researchBranch ?? '',
+          when: () => exportWs.version === 'research',
+          validate: (value: string) => value.trim() ? true : 'research 分支不能为空',
+        },
+        {
+          type: 'input',
+          name: 'customRepo',
+          message: 'libsylixos Git 仓库地址:',
+          default: exportWs.customRepo ?? '',
+          when: () => exportWs.version === 'custom',
+          validate: (value: string) => value.trim() ? true : '仓库地址不能为空',
+        },
+        {
+          type: 'input',
+          name: 'customBranch',
+          message: '仓库分支:',
+          default: exportWs.customBranch ?? '',
+          when: () => exportWs.version === 'custom',
+          validate: (value: string) => value.trim() ? true : '仓库分支不能为空',
+        },
+        {
+          type: 'list',
+          name: 'arm64PageShift',
+          message: 'ARM64 架构页大小:',
+          choices: ARM64_PAGE_SHIFT_CHOICES,
+          default: exportWs.arm64PageShift ?? 12,
+          when: () => hasArm64Platform(exportWs.platform),
+        },
+        {
+          type: 'checkbox',
+          name: 'baseComponents',
+          message: 'Base 编译组件 (多选):',
+          choices: buildBaseComponentChoices(exportWs.baseComponents),
+          validate: (input: string[]) => normalizeBaseComponents(input)?.length ? true : '至少选择一个 Base 组件',
+        },
+      ] as any);
+      exportWs = {
+        ...exportWs,
+        ...adjusted,
+        baseComponents: normalizeBaseComponents(adjusted.baseComponents),
+      };
     }
 
     // 6. 组装并导出
@@ -768,14 +898,52 @@ templateCommand
 // --- Content collection helpers ---
 
 async function collectWorkspace() {
-  return inquirer.prompt([
-    { type: 'checkbox', name: 'platform', message: '目标平台 (多选):', choices: ['ARM64_GENERIC', 'ARM64_A53', 'ARM64_A55', 'ARM64_A57', 'ARM64_A72', 'X86_64', 'RISCV_GC64', 'LOONGARCH64'], default: ['ARM64_GENERIC'], validate: (v: string[]) => v.length > 0 ? true : '至少选择一个平台' },
+  const answers = await inquirer.prompt([
+    { type: 'checkbox', name: 'platform', message: '目标平台 (多选):', choices: PLATFORMS, default: ['ARM64_GENERIC'], validate: (v: string[]) => v.length > 0 ? true : '至少选择一个平台' },
     { type: 'list', name: 'version', message: 'Base 版本:', choices: ['default', 'ecs_3.6.5', 'lts_3.6.5', 'lts_3.6.5_compiled', 'research', 'custom'], default: 'default' },
+    {
+      type: 'input',
+      name: 'researchBranch',
+      message: 'research 仓库分支:',
+      default: '',
+      when: (answers: any) => answers.version === 'research',
+      validate: (value: string) => value.trim() ? true : 'research 分支不能为空',
+    },
+    {
+      type: 'input',
+      name: 'customRepo',
+      message: 'libsylixos Git 仓库地址:',
+      default: '',
+      when: (answers: any) => answers.version === 'custom',
+      validate: (value: string) => value.trim() ? true : '仓库地址不能为空',
+    },
+    {
+      type: 'input',
+      name: 'customBranch',
+      message: '仓库分支:',
+      default: '',
+      when: (answers: any) => answers.version === 'custom',
+      validate: (value: string) => value.trim() ? true : '仓库分支不能为空',
+    },
     { type: 'list', name: 'debugLevel', message: '调试级别:', choices: ['release', 'debug'], default: 'release' },
+    {
+      type: 'list',
+      name: 'arm64PageShift',
+      message: 'ARM64 架构页大小:',
+      choices: ARM64_PAGE_SHIFT_CHOICES,
+      default: 12,
+      when: (answers: any) => hasArm64Platform(answers.platform),
+    },
     { type: 'list', name: 'os', message: '操作系统:', choices: ['sylixos', 'linux'], default: 'sylixos' },
     { type: 'confirm', name: 'createbase', message: '创建新 Base?', default: true },
     { type: 'confirm', name: 'build', message: '编译 Base?', default: false },
+    { type: 'checkbox', name: 'baseComponents', message: 'Base 编译组件 (多选):', choices: buildBaseComponentChoices(), validate: (v: string[]) => normalizeBaseComponents(v)?.length ? true : '至少选择一个 Base 组件' },
   ] as any);
+
+  return {
+    ...answers,
+    baseComponents: normalizeBaseComponents(answers.baseComponents),
+  };
 }
 
 async function collectProject() {
@@ -853,7 +1021,7 @@ async function collectDevice() {
   return inquirer.prompt([
     { type: 'input', name: 'name', message: '设备名称:', validate: (v: string) => v.trim() ? true : '名称不能为空' },
     { type: 'input', name: 'ip', message: 'IP 地址:', validate: (v: string) => /^\d{1,3}(\.\d{1,3}){3}$/.test(v) ? true : '请输入有效的 IPv4 地址' },
-    { type: 'checkbox', name: 'platform', message: '平台 (多选):', choices: ['ARM64_GENERIC', 'ARM64_A53', 'ARM64_A55', 'ARM64_A57', 'ARM64_A72', 'X86_64', 'RISCV_GC64', 'LOONGARCH64'], default: ['ARM64_GENERIC'], validate: (v: string[]) => v.length > 0 ? true : '至少选择一个平台' },
+    { type: 'checkbox', name: 'platform', message: '平台 (多选):', choices: PLATFORMS, default: ['ARM64_GENERIC'], validate: (v: string[]) => v.length > 0 ? true : '至少选择一个平台' },
     { type: 'input', name: 'username', message: '用户名:', default: 'root' },
     { type: 'input', name: 'password', message: '密码:', default: 'root' },
     { type: 'number', name: 'ssh', message: 'SSH 端口:', default: 22 },

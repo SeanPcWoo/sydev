@@ -32,19 +32,21 @@ export const rebuildCommand = new Command('rebuild')
   $ sydev rebuild                  # 交互式选择工程
   $ sydev rebuild libcpu           # 重新编译指定工程
   $ sydev rebuild libcpu -- --parallel=4   # 透传 rl-build build 参数
+  $ sydev rebuild base -- -j4      # 透传 make 参数给 base
 `)
   .action(async (projectArg: string | undefined, opts: { quiet?: boolean }) => {
     const extraArgs = parseExtraArgs();
     const scanner = new WorkspaceScanner(process.cwd());
     const projects = scanner.scan();
+    const runner = new BuildRunner(projects, process.cwd());
+    const availableProjects = runner.getProjects();
 
     if (projectArg) {
-      const found = projects.find((p) => p.name === projectArg);
+      const found = availableProjects.find((p) => p.name === projectArg);
       if (!found) {
         console.error(chalk.red(`未找到工程 '${projectArg}'，运行 sydev rebuild 查看可用工程列表`));
         process.exit(1);
       }
-      const runner = new BuildRunner(projects, process.cwd());
       runner.ensureMakefile();
       runner.on('progress', (event: BuildProgressEvent) => {
         if (event.type === 'stdout-line') process.stdout.write(event.line + '\n');
@@ -65,19 +67,18 @@ export const rebuildCommand = new Command('rebuild')
       }
     }
 
-    if (projects.length === 0) {
-      console.error(chalk.yellow('未找到工程（确认当前目录是 workspace 根目录，且工程子目录同时包含 .project 和 Makefile）'));
+    if (availableProjects.length === 0) {
+      console.error(chalk.yellow('未找到工程（确认当前目录是 workspace 根目录，且至少存在 base Makefile 或工程子目录同时包含 .project 和 Makefile）'));
       process.exit(1);
     }
 
-    const runner = new BuildRunner(projects, process.cwd());
     runner.ensureMakefile();
-    const { default: inquirer } = await import('inquirer');
+    const { default: inquirer } = await import('../utils/inquirer.js');
     const { selected } = await inquirer.prompt([{
       type: 'checkbox',
       name: 'selected',
       message: '选择要重新编译的工程：',
-      choices: projects.map((p) => ({ name: p.name, value: p })),
+      choices: availableProjects.map((p) => ({ name: p.name, value: p })),
       validate: (answer: readonly unknown[]) => answer.length > 0 ? true : '请至少选择一个',
     }]);
 

@@ -213,6 +213,14 @@ export class BuildRunner extends EventEmitter {
     }
   }
 
+  getProjects(): ScannedProject[] {
+    return [...this.projects];
+  }
+
+  private isBaseProject(project: ScannedProject): boolean {
+    return project.name === 'base';
+  }
+
   private defaultCpSection(project: ScannedProject): string {
     return [
       `cp-${project.name}:`,
@@ -264,13 +272,21 @@ export class BuildRunner extends EventEmitter {
     lines.push(`# ${n}`);
     lines.push('#' + '*'.repeat(79));
     lines.push(`${n}:`);
-    lines.push(`\tbear --append -- rl-build build --project=${n} $(RL_BUILD_ARGS)`);
+    if (this.isBaseProject(project)) {
+      lines.push(`\tbear --append -- $(MAKE) -C $(WORKSPACE_${n}) $(BASE_BUILD_ARGS) all`);
+    } else {
+      lines.push(`\tbear --append -- rl-build build --project=${n} $(RL_BUILD_ARGS)`);
+    }
     lines.push('');
     lines.push(`clean-${n}:`);
-    lines.push(`\trl-build clean --project=${n} $(RL_CLEAN_ARGS)`);
+    if (this.isBaseProject(project)) {
+      lines.push(`\t$(MAKE) -C $(WORKSPACE_${n}) $(BASE_CLEAN_ARGS) clean`);
+    } else {
+      lines.push(`\trl-build clean --project=${n} $(RL_CLEAN_ARGS)`);
+    }
     lines.push('');
     lines.push(`rebuild-${n}: clean-${n} ${n}`);
-    if (n !== 'base') {
+    if (!this.isBaseProject(project)) {
       lines.push('');
       lines.push(this.resolveCpSection(project, existingBlock));
     }
@@ -480,7 +496,7 @@ export class BuildRunner extends EventEmitter {
 
   /** 在执行前校正工程 config.mk 里的 SYLIXOS_BASE_PATH */
   private syncProjectBasePath(project: ScannedProject): void {
-    if (!this.basePath) {
+    if (!this.basePath || this.isBaseProject(project)) {
       return;
     }
 
@@ -520,16 +536,24 @@ export class BuildRunner extends EventEmitter {
     const args = ['-f', this.makefilePath, target];
 
     if (options?.extraArgs && options.extraArgs.length > 0) {
-      const extraArgs = targetType === 'build' || targetType === 'rebuild' || targetType === 'template'
-        ? normalizeBuildExtraArgs(options.extraArgs)
-        : options.extraArgs;
-      const formattedArgs = formatExtraArgsForMake(extraArgs);
+      if (targetType === 'build' || targetType === 'rebuild' || targetType === 'template') {
+        const rlBuildArgs = formatExtraArgsForMake(normalizeBuildExtraArgs(options.extraArgs));
+        const baseBuildArgs = formatExtraArgsForMake(options.extraArgs);
 
-      if (formattedArgs) {
-        if (targetType === 'build' || targetType === 'rebuild' || targetType === 'template') {
-          args.push(`RL_BUILD_ARGS=${formattedArgs}`);
-        } else if (targetType === 'clean') {
-          args.push(`RL_CLEAN_ARGS=${formattedArgs}`);
+        if (rlBuildArgs) {
+          args.push(`RL_BUILD_ARGS=${rlBuildArgs}`);
+        }
+        if (baseBuildArgs) {
+          args.push(`BASE_BUILD_ARGS=${baseBuildArgs}`);
+        }
+      } else if (targetType === 'clean') {
+        const cleanArgs = formatExtraArgsForMake(options.extraArgs);
+        if (cleanArgs) {
+          if (this.isBaseProject(project)) {
+            args.push(`BASE_CLEAN_ARGS=${cleanArgs}`);
+          } else {
+            args.push(`RL_CLEAN_ARGS=${cleanArgs}`);
+          }
         }
       }
     }

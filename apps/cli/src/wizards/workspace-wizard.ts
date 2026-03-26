@@ -1,28 +1,78 @@
-import inquirer from 'inquirer';
+import inquirer from '../utils/inquirer.js';
 import chalk from 'chalk';
-import { join } from 'path';
-import { rmSync, existsSync } from 'fs';
-import { execSync } from 'child_process';
 import { ConfigManager } from '@sydev/core/config-manager.js';
 import { RlWrapper } from '@sydev/core/rl-wrapper.js';
-import { PLATFORMS } from '@sydev/core/constants.js';
+import { BASE_COMPONENT_VALUES, PLATFORMS, REQUIRED_BASE_COMPONENTS } from '@sydev/core/constants.js';
 import { workspaceSchema, type WorkspaceConfig } from '@sydev/core/schemas/workspace-schema.js';
 import { createCliProgressReporter } from '../utils/cli-progress.js';
 import { getRemoteDefaultBranch } from '../utils/git.js';
 
 const RESEARCH_REPO = 'ssh://git@10.7.100.21:16783/sylixos/research/libsylixos.git';
+const ARM64_PAGE_SHIFT_CHOICES = [
+  { name: '4K 页 (页偏移 12)', value: 12 },
+  { name: '16K 页 (页偏移 14)', value: 14 },
+  { name: '64K 页 (页偏移 16)', value: 16 },
+] as const;
+const REQUIRED_BASE_COMPONENT_SET = new Set<string>(REQUIRED_BASE_COMPONENTS);
+
+function hasArm64Platform(platforms: string[]): boolean {
+  return platforms.some((platform) => platform.startsWith('ARM64_'));
+}
+
+function normalizeBaseComponents(components: readonly unknown[] | undefined): string[] | undefined {
+  if (components === undefined) {
+    return undefined;
+  }
+
+  const normalized = [...REQUIRED_BASE_COMPONENTS, ...components]
+    .map((component) => {
+      if (typeof component === 'string') {
+        return component.trim();
+      }
+      if (component && typeof component === 'object' && 'value' in component && typeof (component as { value?: unknown }).value === 'string') {
+        return (component as { value: string }).value.trim();
+      }
+      return '';
+    })
+    .filter(Boolean);
+
+  if (normalized.length === 0) {
+    return undefined;
+  }
+
+  const deduped = [...new Set(normalized)];
+  return deduped.length === BASE_COMPONENT_VALUES.length ? undefined : deduped;
+}
+
+function buildBaseComponentChoices(selected?: readonly string[]) {
+  const selectedSet = new Set(selected?.length ? selected : BASE_COMPONENT_VALUES);
+  return BASE_COMPONENT_VALUES.map((component) => ({
+    name: REQUIRED_BASE_COMPONENT_SET.has(component) ? `${component} (必选)` : component,
+    value: component,
+    checked: REQUIRED_BASE_COMPONENT_SET.has(component) || selectedSet.has(component),
+    disabled: REQUIRED_BASE_COMPONENT_SET.has(component) ? '必选' : false,
+  }));
+}
+
+function formatArm64PageShift(shift: number): string {
+  if (shift === 14) return '16K 页 (页偏移 14)';
+  if (shift === 16) return '64K 页 (页偏移 16)';
+  return '4K 页 (页偏移 12)';
+}
+
+function formatBaseComponents(components?: string[]): string {
+  return !components?.length || components.length === BASE_COMPONENT_VALUES.length
+    ? '全部'
+    : components.join(', ');
+}
 
 /**
  * 执行 workspace 初始化（由交互模式和非交互模式共享）
  */
 export async function runWorkspaceInit(
   config: WorkspaceConfig & { cwd: string; basePath: string; version: string },
-  options?: { skipConfirm?: boolean; skipCloneMode?: boolean }
+  options?: { skipConfirm?: boolean }
 ): Promise<void> {
-  const isResearch = config.version === 'research';
-  const isCustom = config.version === 'custom';
-  const isCloneMode = (isResearch || isCustom) && !options?.skipCloneMode;
-
   // 验证配置
   const validation = ConfigManager.validate(workspaceSchema, config);
   if (!validation.valid) {
@@ -39,6 +89,10 @@ export async function runWorkspaceInit(
   console.log(chalk.dim(`  版本: ${config.version}`));
   console.log(chalk.dim(`  操作系统: ${config.os}`));
   console.log(chalk.dim(`  调试级别: ${config.debugLevel}`));
+  if (hasArm64Platform(config.platform)) {
+    console.log(chalk.dim(`  ARM64 页大小: ${formatArm64PageShift(config.arm64PageShift ?? 12)}`));
+  }
+  console.log(chalk.dim(`  Base 编译组件: ${formatBaseComponents(config.baseComponents)}`));
   console.log(chalk.dim(`  创建 Base: ${config.createbase ? '是' : '否'}`));
   console.log(chalk.dim(`  编译 Base: ${config.build ? '是' : '否'}`));
 
@@ -63,60 +117,34 @@ export async function runWorkspaceInit(
 
   const progressReporter = createCliProgressReporter();
   const rlWrapper = new RlWrapper(progressReporter);
-
-  // research/custom 模式：必须用 lts_3.6.5 + createbase=true 先创建完整 base
   const result = await rlWrapper.initWorkspace({
     cwd: config.cwd,
     basePath: config.basePath,
     platform: config.platform,
-    version: isCloneMode ? 'lts_3.6.5' : config.version,
-    createbase: isCloneMode ? true : config.createbase,
-    build: isCloneMode ? false : config.build,
+    version: config.version,
+    createbase: config.createbase,
+    build: config.build,
     debugLevel: config.debugLevel,
-    os: config.os
+    os: config.os,
+    arm64PageShift: config.arm64PageShift,
+    baseComponents: config.baseComponents,
+    ...(config.version === 'custom' && {
+      customRepo: (config as any).customRepo,
+      customBranch: (config as any).customBranch,
+    }),
+    ...(config.version === 'research' && {
+      researchBranch: (config as any).researchBranch,
+    }),
   });
 
   if (result.success) {
-    if (!isCloneMode) {
-      console.log(chalk.bold.green('\n✓ Workspace 初始化成功!\n'));
-    }
-  } else if (isCloneMode) {
-    // clone 模式：createbase=true + build=false 时 rl-workspace 拷贝产物会失败，属于预期行为
-    // workspace 目录结构和配置文件已创建好，忽略错误继续
-    console.log(chalk.yellow(`\n⚠ rl-workspace 执行有错误（clone 模式下可忽略），继续处理...\n`));
+    console.log(chalk.bold.green('\n✓ Workspace 初始化成功!\n'));
   } else {
     console.error(chalk.red(`\n✗ 初始化失败: ${result.error}\n`));
     if (result.fixSuggestion) {
       console.error(chalk.cyan(`建议: ${result.fixSuggestion}\n`));
     }
     process.exit(1);
-  }
-
-  // research/custom 模式：删除 libsylixos 并 clone 仓库
-  if (isCloneMode) {
-    const basePath = config.basePath;
-    const libsylixosPath = join(basePath, 'libsylixos');
-
-    if (existsSync(libsylixosPath)) {
-      console.log(chalk.cyan(`正在删除 libsylixos 目录...`));
-      rmSync(libsylixosPath, { recursive: true, force: true });
-      console.log(chalk.dim(`  已删除 ${libsylixosPath}`));
-    }
-
-    const cloneBranch = (config as any).customBranch || (config as any).researchBranch || 'master';
-    const cloneRepo = isResearch ? RESEARCH_REPO : (config as any).customRepo;
-
-    console.log(chalk.cyan(`正在 clone libsylixos 仓库 (分支: ${cloneBranch})...`));
-    try {
-      execSync(
-        `git clone -b ${cloneBranch} ${cloneRepo} libsylixos`,
-        { cwd: basePath, stdio: 'inherit' }
-      );
-      console.log(chalk.bold.green(`\n✓ Workspace 初始化成功!\n`));
-    } catch (err: any) {
-      console.error(chalk.red(`\n✗ clone libsylixos 仓库失败: ${err.message}\n`));
-      process.exit(1);
-    }
   }
 
   progressReporter.removeAllListeners();
@@ -201,6 +229,14 @@ export async function runWorkspaceWizard(): Promise<void> {
     },
     {
       type: 'list',
+      name: 'arm64PageShift',
+      message: '修改 ARM64 架构页大小:',
+      choices: ARM64_PAGE_SHIFT_CHOICES,
+      default: 12,
+      when: (answers: any) => hasArm64Platform(answers.platform ?? [])
+    },
+    {
+      type: 'list',
       name: 'os',
       message: '操作系统:',
       choices: [
@@ -232,6 +268,13 @@ export async function runWorkspaceWizard(): Promise<void> {
       message: '是否编译 Base?',
       default: false,
       when: (answers: any) => answers.version !== 'research' && answers.version !== 'custom'
+    },
+    {
+      type: 'checkbox',
+      name: 'baseComponents',
+      message: 'Base 编译组件 (多选):',
+      choices: buildBaseComponentChoices(),
+      validate: (input: string[]) => normalizeBaseComponents(input)?.length ? true : '至少选择一个 Base 组件',
     }
   ] as any);
 
@@ -244,6 +287,8 @@ export async function runWorkspaceWizard(): Promise<void> {
     build: answers.build ?? false,
     debugLevel: answers.debugLevel,
     os: answers.os,
+    arm64PageShift: answers.arm64PageShift,
+    baseComponents: normalizeBaseComponents(answers.baseComponents),
     ...(answers.version === 'custom' && {
       customRepo: answers.customRepo?.trim(),
       customBranch: answers.customBranch,
