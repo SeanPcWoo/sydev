@@ -233,7 +233,7 @@ export async function runWorkspaceWizard(): Promise<void> {
       message: '修改 ARM64 架构页大小:',
       choices: ARM64_PAGE_SHIFT_CHOICES,
       default: 12,
-      when: (answers: any) => hasArm64Platform(answers.platform ?? [])
+      when: (answers: any) => answers.version !== 'lts_3.6.5_compiled' && hasArm64Platform(answers.platform ?? [])
     },
     {
       type: 'list',
@@ -260,21 +260,21 @@ export async function runWorkspaceWizard(): Promise<void> {
       name: 'createbase',
       message: '是否创建新 Base?',
       default: true,
-      when: (answers: any) => answers.version !== 'research' && answers.version !== 'custom'
+      when: (answers: any) => answers.version !== 'research' && answers.version !== 'custom' && answers.version !== 'lts_3.6.5_compiled'
     },
     {
       type: 'confirm',
       name: 'build',
       message: '是否编译 Base?',
       default: false,
-      when: (answers: any) => answers.version !== 'research' && answers.version !== 'custom'
+      when: (answers: any) => answers.version !== 'research' && answers.version !== 'custom' && answers.version !== 'lts_3.6.5_compiled'
     },
     {
       type: 'checkbox',
       name: 'baseComponents',
       message: 'Base 编译组件 (多选):',
       choices: buildBaseComponentChoices(),
-      validate: (input: string[]) => normalizeBaseComponents(input)?.length ? true : '至少选择一个 Base 组件',
+      when: (answers: any) => answers.version !== 'lts_3.6.5_compiled'
     }
   ] as any);
 

@@ -192,6 +192,8 @@ export class RlWrapper {
       syncWorkspaceConfig(config.cwd, config);
     }
 
+    patchBaseMultiPlatformMk(config.basePath);
+
     try {
       applyArm64PageShiftToBase(config, { strict: true });
     } catch (err: any) {
@@ -480,11 +482,20 @@ function combineWorkspaceInitResults(
   }
 
   if (bootstrapError) {
+    if (baseBuildResult === undefined) {
+      return {
+        success: false,
+        error: bootstrapError,
+        stdout: bootstrapResult.stdout,
+        stderr: bootstrapResult.stderr,
+        fixSuggestion: bootstrapResult.fixSuggestion,
+      };
+    }
     return {
       success: false,
-      error: `${bootstrapError}（已继续执行 base 编译${baseBuildResult?.success ? '并成功' : ''}）`,
-      stdout: [bootstrapResult.stdout, baseBuildResult?.stdout].filter(Boolean).join('\n'),
-      stderr: [bootstrapResult.stderr, baseBuildResult?.stderr].filter(Boolean).join('\n'),
+      error: `${bootstrapError}（已继续执行 base 编译${baseBuildResult.success ? '并成功' : ''}）`,
+      stdout: [bootstrapResult.stdout, baseBuildResult.stdout].filter(Boolean).join('\n'),
+      stderr: [bootstrapResult.stderr, baseBuildResult.stderr].filter(Boolean).join('\n'),
       fixSuggestion: bootstrapResult.fixSuggestion,
     };
   }
@@ -705,6 +716,60 @@ function buildBaseComponentsBlock(enabledComponents: string[], disabledComponent
   });
 
   return lines;
+}
+
+/** 对单个 mk 文件内容应用 jobserver patch，返回 patch 后内容（未变化则返回原内容） */
+function applyJobserverPatch(content: string): string {
+  let next = content;
+
+  // 1. 多平台 foreach recipe：\t@$(foreach ...,make → \t+@$(foreach ...,$( MAKE)
+  next = next.replace(
+    /^(\t)(@\$\(foreach [^,]+,[^,]+,)make\b/gm,
+    '$1+$2$(MAKE)'
+  );
+
+  // 2. 单平台 foreach recipe：\t@$(foreach ...,$(foreach ..., make → 加 + 并替换 make
+  next = next.replace(
+    /^(\t)(@\$\(foreach [^,]+,[^,]+,\$\(foreach [^,]+,[^,]+,\s*)make\b/gm,
+    '$1+$2$(MAKE)'
+  );
+
+  // 3. 单平台 for 循环 recipe：\t@for ... do make → \t+@for ... do $(MAKE)
+  next = next.replace(
+    /^(\t)(@for .+do )make\b/gm,
+    '$1+$2$(MAKE)'
+  );
+
+  // 4. 单平台 SDK recipe：\tmake all/clean -j → \t$(MAKE) all/clean
+  next = next.replace(
+    /^\tmake (all|clean)[ \t]+-j\d*[ \t]*$/gm,
+    '\t$(MAKE) $1'
+  );
+
+  return next;
+}
+
+/**
+ * 修补 base 的 Makefile 和 multi-platform.mk，使 make jobserver 能正常传递并行度。
+ */
+export function patchBaseMultiPlatformMk(basePath: string): boolean {
+  const targets = [
+    join(basePath, 'Makefile'),
+    join(basePath, 'libsylixos', 'SylixOS', 'mktemp', 'multi-platform.mk'),
+  ];
+
+  let anyChanged = false;
+  for (const mkPath of targets) {
+    if (!existsSync(mkPath)) continue;
+    const content = readFileSync(mkPath, 'utf-8');
+    const next = applyJobserverPatch(content);
+    if (next !== content) {
+      writeFileSync(mkPath, next, 'utf-8');
+      anyChanged = true;
+    }
+  }
+
+  return anyChanged;
 }
 
 function appendPlatformsLine(content: string, platformsLine: string): string {

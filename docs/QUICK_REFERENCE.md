@@ -16,6 +16,7 @@ sydev device add
 ```bash
 sydev build
 sydev build base
+sydev build base -- -j8          # 并行编译 base（自动修补 jobserver）
 sydev build libcpu
 sydev build libcpu -- --parallel=4
 sydev build __demo
@@ -65,6 +66,7 @@ sydev template apply --help
 - `build` 可以执行 `.sydev/Makefile` 中的构建模板，如 `sydev build __demo`
 - `.sydev/Makefile` 里 `base` target 使用 `make`，其它工程 target 调用 `rl-build`
 - `build` / `clean` / `rebuild` 执行前会自动同步目标工程 `config.mk` 里的 `SYLIXOS_BASE_PATH`
+- `sydev build base -- -j<N>` 会自动修补 base 的 `Makefile` 和 `multi-platform.mk`，让 jobserver 并行度能正确透传；`workspace init` 也会自动修补
 - `workspace init` / `template apply` 可以通过 `baseComponents` 预先裁剪 base `Makefile` 的 `COMPONENTS`
 - `template` 管理的是配置模板，不是构建模板
 - `upload` 上传多个项目时必须显式传 `--device`

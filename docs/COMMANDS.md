@@ -101,6 +101,7 @@ sydev build base -- -j4
 - 即使指定了 `--build`，`rl-workspace` 阶段也会固定使用不编译模式；只有在 base 构造完成后，才会单独进入 base 目录执行 `make all`
 - base 的 `make all` 当前不设置超时；`rl-workspace` 等其它命令仍保留各自的超时控制
 - 如果用户选择了编译，且 `rl-workspace` 返回失败，只要 base 已构造出来，仍会继续尝试执行 `make all`
+- workspace 构造完成后会自动修补 `base/Makefile` 和 `base/libsylixos/SylixOS/mktemp/multi-platform.mk`，将裸 `make` 替换为 `$(MAKE)` 并加 `+` 前缀，确保 jobserver 能正确传递并行度；已修补的文件再次 init 时会跳过
 
 #### 示例
 
@@ -259,6 +260,7 @@ sydev device list
 - 指定 `project` 参数时，先按项目名匹配，找不到再按构建模板名匹配
 - `project=base` 时会在 base 目录执行 `make all`
 - 执行前会把目标工程 `config.mk` 里的 `SYLIXOS_BASE_PATH` 同步为当前 workspace 的 base 路径
+- `project=base` 且透传了 `-j<N>` 参数时，会自动检测并修补 `base/Makefile` 和 `base/libsylixos/SylixOS/mktemp/multi-platform.mk` 的 jobserver 支持（已修补的跳过），确保并行度能正确传递给子 make
 - 当前没有 `--all` 选项
 
 #### 示例

@@ -3,6 +3,7 @@ import { spawn } from 'child_process';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import type { ScannedProject } from './workspace-scanner.js';
+import { patchBaseMultiPlatformMk } from './rl-wrapper.js';
 
 export interface BuildOptions {
   extraArgs?: string[];  // -- 之后透传给 rl-build / Makefile 模板的自定义参数
@@ -494,7 +495,7 @@ export class BuildRunner extends EventEmitter {
     return extractBuildErrorLines(output, this.makefilePath);
   }
 
-  /** 在执行前校正工程 config.mk 里的 SYLIXOS_BASE_PATH */
+  /** 在执行前校正工程 config.mk 里的 SYLIXOS_BASE_PATH，并同步 MULTI_PLATFORM_BUILD 相关的 PLATFORM_NAME */
   private syncProjectBasePath(project: ScannedProject): void {
     if (!this.basePath || this.isBaseProject(project)) {
       return;
@@ -506,16 +507,43 @@ export class BuildRunner extends EventEmitter {
     }
 
     const content = readFileSync(configMkPath, 'utf-8');
-    const nextContent = /^\s*SYLIXOS_BASE_PATH\s*[:?+]?=.*$/m.test(content)
+    let nextContent = /^\s*SYLIXOS_BASE_PATH\s*[:?+]?=.*$/m.test(content)
       ? content.replace(/^(\s*SYLIXOS_BASE_PATH\s*)([:?+]?=).*$/m, `$1$2 ${this.basePath}`)
       : appendConfigLine(content, `SYLIXOS_BASE_PATH = ${this.basePath}`);
+
+    // 若 base 的 config.mk 启用了 MULTI_PLATFORM_BUILD，则在工程 config.mk 中插入/更新 PLATFORM_NAME
+    const baseConfigMkPath = join(this.basePath, 'config.mk');
+    try {
+      const baseContent = readFileSync(baseConfigMkPath, 'utf-8');
+      const multiMatch = baseContent.match(/^MULTI_PLATFORM_BUILD\s*[:?+]?=\s*(.+)$/m);
+      if (multiMatch && multiMatch[1].trim().toLowerCase() === 'yes') {
+        const platformsMatch = baseContent.match(/^PLATFORMS\s*[:?+]?=\s*(.+)$/m);
+        if (platformsMatch) {
+          const platformsValue = platformsMatch[1].trim();
+          if (/^\s*PLATFORM_NAME\s*[:?+]?=.*$/m.test(nextContent)) {
+            nextContent = nextContent.replace(
+              /^(\s*PLATFORM_NAME\s*)([:?+]?=).*$/m,
+              `$1$2 ${platformsValue}`
+            );
+          } else {
+            // 插在 SYLIXOS_BASE_PATH 行之后
+            nextContent = nextContent.replace(
+              /^(\s*SYLIXOS_BASE_PATH\s*[:?+]?=.*)$/m,
+              `$1\nPLATFORM_NAME = ${platformsValue}`
+            );
+          }
+        }
+      }
+    } catch {
+      // base config.mk 不存在，跳过
+    }
 
     if (nextContent !== content) {
       writeFileSync(configMkPath, nextContent, 'utf-8');
     }
   }
 
-  private syncBasePathBeforeTarget(project: ScannedProject, targetType: 'build' | 'clean' | 'rebuild' | 'template'): void {
+  private syncBasePathBeforeTarget(project: ScannedProject, targetType: 'build' | 'clean' | 'rebuild' | 'template', options?: BuildOptions): void {
     if (targetType === 'template') {
       for (const currentProject of this.projects) {
         this.syncProjectBasePath(currentProject);
@@ -524,6 +552,12 @@ export class BuildRunner extends EventEmitter {
     }
 
     this.syncProjectBasePath(project);
+
+    // 若是 base 工程且用户传了 -j 参数，自动确保 multi-platform.mk 已 patch
+    if (this.isBaseProject(project) && this.basePath &&
+        options?.extraArgs?.some(arg => /^-j\d*$/.test(arg))) {
+      patchBaseMultiPlatformMk(this.basePath);
+    }
   }
 
   /** 执行指定 Makefile target */
@@ -562,7 +596,7 @@ export class BuildRunner extends EventEmitter {
     const quiet = options?.quiet ?? false;
 
     try {
-      this.syncBasePathBeforeTarget(project, targetType);
+      this.syncBasePathBeforeTarget(project, targetType, options);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       return Promise.resolve({
