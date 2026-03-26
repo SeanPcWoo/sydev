@@ -41,6 +41,7 @@ import { ConfigReader } from '@sydev/core/config-reader.js';
 import { WorkspaceScanner } from '@sydev/core/workspace-scanner.js';
 import { RlWrapper } from '@sydev/core/rl-wrapper.js';
 import { InitOrchestrator } from '@sydev/core/init-orchestrator.js';
+import { DEFAULT_PLATFORM, PLATFORMS } from '@sydev/core/constants.js';
 import { fullConfigSchema } from '@sydev/core/schemas/index.js';
 import type { TemplateType } from '@sydev/core/template-manager.js';
 import type { FullConfig } from '@sydev/core/schemas/index.js';
@@ -659,7 +660,7 @@ templateCommand
 
 async function collectWorkspace() {
   return inquirer.prompt([
-    { type: 'checkbox', name: 'platform', message: '目标平台 (多选):', choices: ['ARM64_GENERIC', 'ARM64_A53', 'ARM64_A55', 'ARM64_A57', 'ARM64_A72', 'X86_64', 'RISCV_GC64', 'LOONGARCH64'], default: ['ARM64_GENERIC'], validate: (v: string[]) => v.length > 0 ? true : '至少选择一个平台' },
+    { type: 'checkbox', name: 'platform', message: '目标平台 (多选):', choices: PLATFORMS, default: [DEFAULT_PLATFORM], validate: (v: string[]) => v.length > 0 ? true : '至少选择一个平台' },
     { type: 'list', name: 'version', message: 'Base 版本:', choices: ['default', 'ecs_3.6.5', 'lts_3.6.5', 'lts_3.6.5_compiled', 'research', 'custom'], default: 'default' },
     { type: 'list', name: 'debugLevel', message: '调试级别:', choices: ['release', 'debug'], default: 'release' },
     { type: 'list', name: 'os', message: '操作系统:', choices: ['sylixos', 'linux'], default: 'sylixos' },
@@ -743,7 +744,7 @@ async function collectDevice() {
   return inquirer.prompt([
     { type: 'input', name: 'name', message: '设备名称:', validate: (v: string) => v.trim() ? true : '名称不能为空' },
     { type: 'input', name: 'ip', message: 'IP 地址:', validate: (v: string) => /^\d{1,3}(\.\d{1,3}){3}$/.test(v) ? true : '请输入有效的 IPv4 地址' },
-    { type: 'checkbox', name: 'platform', message: '平台 (多选):', choices: ['ARM64_GENERIC', 'ARM64_A53', 'ARM64_A55', 'ARM64_A57', 'ARM64_A72', 'X86_64', 'RISCV_GC64', 'LOONGARCH64'], default: ['ARM64_GENERIC'], validate: (v: string[]) => v.length > 0 ? true : '至少选择一个平台' },
+    { type: 'checkbox', name: 'platform', message: '平台 (多选):', choices: PLATFORMS, default: [DEFAULT_PLATFORM], validate: (v: string[]) => v.length > 0 ? true : '至少选择一个平台' },
     { type: 'input', name: 'username', message: '用户名:', default: 'root' },
     { type: 'input', name: 'password', message: '密码:', default: 'root' },
     { type: 'number', name: 'ssh', message: 'SSH 端口:', default: 22 },

@@ -1,4 +1,5 @@
 import { BaseOptionParser, ValidationResult } from './base-parser.js';
+import { DEFAULT_PLATFORM, PLATFORM_VALUES, isValidPlatform } from '@sydev/core/constants.js';
 
 export interface DeviceOptions {
   name: string;
@@ -16,7 +17,7 @@ export class DeviceOptionParser extends BaseOptionParser<DeviceOptions> {
   protected defaults: DeviceOptions = {
     name: '',
     ip: '',
-    platforms: ['ARM64_GENERIC'],
+    platforms: [DEFAULT_PLATFORM],
     username: 'root',
     password: 'root',
     ssh: 22,
@@ -67,14 +68,10 @@ export class DeviceOptionParser extends BaseOptionParser<DeviceOptions> {
       errors.push('platforms must be a non-empty array');
     }
 
-    const validPlatforms = [
-      'ARM64_GENERIC', 'ARM64_A53', 'ARM64_A55', 'ARM64_A57', 'ARM64_A72',
-      'X86_64', 'RISCV_GC64', 'LOONGARCH64'
-    ];
-    const invalidPlatforms = config.platforms.filter((p: string) => !validPlatforms.includes(p));
+    const invalidPlatforms = config.platforms.filter((p: string) => !isValidPlatform(p));
     if (invalidPlatforms.length > 0) {
       errors.push(
-        `Invalid platforms: ${invalidPlatforms.join(', ')}. Valid: ${validPlatforms.join(', ')}`
+        `Invalid platforms: ${invalidPlatforms.join(', ')}. Valid: ${PLATFORM_VALUES.join(', ')}`
       );
     }
 

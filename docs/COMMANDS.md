@@ -73,7 +73,7 @@ sydev rebuild libcpu -- --parallel=8
 | `--cwd <path>` | workspace 路径 |
 | `--base-path <path>` | Base 目录路径 |
 | `--version <version>` | `default` / `ecs_3.6.5` / `lts_3.6.5` / `lts_3.6.5_compiled` / `research` / `custom` |
-| `--platforms <platforms>` | 目标平台，逗号分隔 |
+| `--platforms <platforms>` | 目标平台，逗号分隔；完整值见 [PLATFORMS.md](./PLATFORMS.md) |
 | `--os <os>` | `sylixos` 或 `linux` |
 | `--debug-level <level>` | `release` 或 `debug` |
 | `--custom-repo <repo>` | `version=custom` 时需要 |
@@ -90,6 +90,7 @@ sydev rebuild libcpu -- --parallel=8
 - 非交互模式下，命令行参数会覆盖 JSON 配置文件中的同名字段
 - `version=custom` 时需要额外提供 `customRepo` 和 `customBranch`
 - `version=research` 时需要额外提供 `researchBranch`
+- 支持的 `--platforms` 值与 RealEvo-Stream 官方“平台编译参数”保持一致；文档更新时间为 2025-04-28 的版本见 [PLATFORMS.md](./PLATFORMS.md)
 - 若成功创建 base，会同步 base `config.mk` 里的 `PLATFORMS`，并自动修复 `libsylixos/SylixOS/mktemp/multi-platform.mk` 的并行编译模板
 
 #### 示例
@@ -187,7 +188,7 @@ sydev project list
 | --- | --- |
 | `--name <name>` | 设备名称 |
 | `--ip <ip>` | IPv4 地址 |
-| `--platforms <platforms>` | 支持的平台，逗号分隔 |
+| `--platforms <platforms>` | 支持的平台，逗号分隔；完整值见 [PLATFORMS.md](./PLATFORMS.md) |
 | `--username <username>` | 登录用户名 |
 | `--password <password>` | 登录密码 |
 | `--ssh <port>` | SSH 端口，默认 `22` |

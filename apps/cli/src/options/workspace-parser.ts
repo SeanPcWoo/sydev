@@ -1,4 +1,5 @@
 import { BaseOptionParser, ValidationResult } from './base-parser.js';
+import { DEFAULT_PLATFORM, PLATFORM_VALUES, isValidPlatform } from '@sydev/core/constants.js';
 
 export interface WorkspaceOptions {
   cwd: string;
@@ -20,7 +21,7 @@ export class WorkspaceOptionParser extends BaseOptionParser<WorkspaceOptions> {
     cwd: process.cwd(),
     basePath: '',
     version: 'default',
-    platforms: ['ARM64_GENERIC'],
+    platforms: [DEFAULT_PLATFORM],
     os: 'sylixos',
     debugLevel: 'release',
     createBase: true,
@@ -77,14 +78,10 @@ export class WorkspaceOptionParser extends BaseOptionParser<WorkspaceOptions> {
       errors.push('platforms must be a non-empty array');
     }
 
-    const validPlatforms = [
-      'ARM64_GENERIC', 'ARM64_A53', 'ARM64_A55', 'ARM64_A57', 'ARM64_A72',
-      'X86_64', 'RISCV_GC64', 'LOONGARCH64'
-    ];
-    const invalidPlatforms = config.platforms.filter((p: string) => !validPlatforms.includes(p));
+    const invalidPlatforms = config.platforms.filter((p: string) => !isValidPlatform(p));
     if (invalidPlatforms.length > 0) {
       errors.push(
-        `Invalid platforms: ${invalidPlatforms.join(', ')}. Valid: ${validPlatforms.join(', ')}`
+        `Invalid platforms: ${invalidPlatforms.join(', ')}. Valid: ${PLATFORM_VALUES.join(', ')}`
       );
     }
 

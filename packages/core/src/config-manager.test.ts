@@ -8,7 +8,7 @@ describe('ConfigManager', () => {
       const validConfig = {
         cwd: '/tmp/workspace',
         basePath: './base',
-        platform: 'ARM64_GENERIC',
+        platform: ['ARM64_GENERIC'],
         version: 'lts_3.6.5',
         createbase: false,
         build: false,
@@ -25,7 +25,7 @@ describe('ConfigManager', () => {
 
     it('should reject invalid workspace config with missing required fields', () => {
       const invalidConfig = {
-        platform: 'ARM64_GENERIC'
+        platform: ['ARM64_GENERIC']
         // missing cwd and basePath
       };
 
@@ -41,7 +41,7 @@ describe('ConfigManager', () => {
       const invalidConfig = {
         cwd: '/tmp',
         basePath: './base',
-        platform: 'invalid-platform'
+        platform: ['invalid-platform']
       };
 
       const result = ConfigManager.validate(workspaceSchema, invalidConfig);
@@ -74,7 +74,7 @@ describe('ConfigManager', () => {
       const config = {
         cwd: '/tmp',
         basePath: './base',
-        platform: 'ARM64_GENERIC'
+        platform: ['ARM64_GENERIC']
       };
 
       const json = ConfigManager.exportToJson(config);
@@ -92,7 +92,7 @@ describe('ConfigManager', () => {
       const json = JSON.stringify({
         cwd: '/tmp',
         basePath: './base',
-        platform: 'ARM64_GENERIC'
+        platform: ['ARM64_GENERIC']
       });
 
       const result = ConfigManager.importFromJson(workspaceSchema, json);
@@ -100,7 +100,7 @@ describe('ConfigManager', () => {
       expect(result.valid).toBe(true);
       expect(result.data?.cwd).toBe('/tmp');
       expect(result.data?.basePath).toBe('./base');
-      expect(result.data?.platform).toBe('ARM64_GENERIC');
+      expect(result.data?.platform).toEqual(['ARM64_GENERIC']);
     });
 
     it('should reject invalid JSON syntax', () => {
@@ -117,7 +117,7 @@ describe('ConfigManager', () => {
       const json = JSON.stringify({
         cwd: '/tmp',
         basePath: './base',
-        platform: 'invalid-platform'
+        platform: ['invalid-platform']
       });
 
       const result = ConfigManager.importFromJson(workspaceSchema, json);

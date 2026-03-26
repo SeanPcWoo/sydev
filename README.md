@@ -8,6 +8,13 @@ sydev 是一个面向 SylixOS 开发环境的命令行工具，用于初始化 w
 npm install -g @haawpc/sydev
 ```
 
+本地测试当前仓库版本：
+
+```bash
+pnpm build:pkg
+cd dist-pkg && npm link
+```
+
 查看安装结果：
 
 ```bash
@@ -18,9 +25,10 @@ sydev --help
 ## 环境要求
 
 - Node.js `>= 18`
-- RealEvo-Stream 已安装，且 `rl` / `rl-workspace` / `rl-project` 等命令可用
+- RealEvo-Stream 已安装，且 `rl-workspace` / `rl-project` / `rl-device` / `rl-build` 等命令可用
 - 执行 `workspace`、`project`、`device`、`template apply`、`init` 时，需要在本机具备对应的 SylixOS/RealEvo 环境
 - `build`、`clean`、`rebuild`、`upload` 需要在有效 workspace 根目录中运行
+- 平台参数以 RealEvo-Stream 官方“平台编译参数”为准；完整列表见 [docs/PLATFORMS.md](./docs/PLATFORMS.md)
 
 ## 快速开始
 
@@ -136,6 +144,7 @@ sydev build __demo
 - [文档首页](./docs/README.md)
 - [完整命令参考](./docs/COMMANDS.md)
 - [配置文件参考](./docs/CONFIG_FILES.md)
+- [平台参数参考](./docs/PLATFORMS.md)
 - [Upload 使用指南](./docs/UPLOAD_GUIDE.md)
 - [快速参考卡片](./docs/QUICK_REFERENCE.md)
 - [Skill / IDE 集成指南](./docs/SKILL_INTEGRATION.md)

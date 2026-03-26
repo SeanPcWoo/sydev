@@ -7,8 +7,9 @@
 1. [快速参考卡片](./QUICK_REFERENCE.md)
 2. [完整命令参考](./COMMANDS.md)
 3. [配置文件参考](./CONFIG_FILES.md)
-4. [Upload 使用指南](./UPLOAD_GUIDE.md)
-5. [Skill / IDE 集成指南](./SKILL_INTEGRATION.md)
+4. [平台参数参考](./PLATFORMS.md)
+5. [Upload 使用指南](./UPLOAD_GUIDE.md)
+6. [Skill / IDE 集成指南](./SKILL_INTEGRATION.md)
 
 ## 文档索引
 
@@ -17,6 +18,7 @@
 | [QUICK_REFERENCE.md](./QUICK_REFERENCE.md) | 想快速查命令、参数和常见工作流 |
 | [COMMANDS.md](./COMMANDS.md) | 想系统了解每个命令、子命令、选项和行为 |
 | [CONFIG_FILES.md](./CONFIG_FILES.md) | 想写 `--config` JSON、模板文件或 `sydev init` 配置 |
+| [PLATFORMS.md](./PLATFORMS.md) | 想确认 `--platforms` / `workspace.platform` 支持哪些平台值 |
 | [UPLOAD_GUIDE.md](./UPLOAD_GUIDE.md) | 想配置 `.reproject`、理解上传规则和排错 |
 | [SKILL_INTEGRATION.md](./SKILL_INTEGRATION.md) | 想在 IDE、脚本、Agent、CI 里调用 sydev |
 
@@ -37,6 +39,7 @@ sydev template apply --help
 - 修正 `build --all`、`clean --all`、`rebuild --all` 等并不存在的参数说明
 - 补全 `template apply` 的 JSON 文件、`--cwd`、`--base-path`、`-y` 文档
 - 补全 `workspace/project/device` 的 `--config` 用法与 JSON 结构
+- 补全平台参数来源，并新增独立的平台值文档
 - 明确 `build` 的“构建模板”和 `template` 的“配置模板”是两套不同概念
 - 补充 `.sydev/Makefile` 中普通工程走 `rl-build`、`base` 直接进入 base 目录执行 `make`，以及 `build` / `clean` / `rebuild` 执行前自动同步 `SYLIXOS_BASE_PATH`
 - 补充 `workspace init` / `build init` 会自动修复 base 的 `libsylixos/SylixOS/mktemp/multi-platform.mk` 并行编译模板

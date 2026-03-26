@@ -12,6 +12,12 @@
 - `createBase`
 - `debugLevel`
 
+注意：
+
+- `workspace init --config` 使用 `platforms`，不是 `platform`
+- `workspace init --config` 使用 `createBase`，不是 `createbase`
+- 平台取值见 [PLATFORMS.md](./PLATFORMS.md)
+
 ### `sydev init` 和 full 模板使用的是“完整配置风格”
 
 字段名示例：
@@ -19,6 +25,12 @@
 - `workspace.platform`
 - `workspace.createbase`
 - `workspace.debugLevel`
+
+注意：
+
+- `workspace.platform` 是数组字段，不是 `platforms`
+- `workspace.createbase` 是小写字段，不是 `createBase`
+- 平台取值见 [PLATFORMS.md](./PLATFORMS.md)
 
 这两套字段名不完全相同，不要混用。
 
@@ -58,6 +70,8 @@ sydev workspace init --config workspace.json
   "build": false
 }
 ```
+
+参考示例文件：[`examples/workspace-config.json`](../examples/workspace-config.json)
 
 ### 可选附加字段
 
@@ -139,6 +153,8 @@ sydev device add --config device.json
 }
 ```
 
+参考示例文件：[`examples/device-config.json`](../examples/device-config.json)
+
 ## sydev init
 
 ### 命令
@@ -191,6 +207,7 @@ sydev init --config full-config.json
 - 若 `workspace.cwd` 或 `workspace.basePath` 未提供，`sydev init` 会在执行前提示输入
 - `workspace.platform` 是数组字段，不是 `platforms`
 - `workspace.createbase` 是小写字段，不是 `createBase`
+- 平台取值见 [PLATFORMS.md](./PLATFORMS.md)
 
 ## template import 与 template apply 支持的文件格式
 

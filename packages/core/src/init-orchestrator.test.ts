@@ -24,12 +24,12 @@ function createMockRlWrapper(overrides: Partial<Record<'initWorkspace' | 'create
 const validWorkspace = {
   cwd: '/tmp/ws',
   basePath: '/tmp/base',
-  platform: 'ARM64_GENERIC' as const,
+  platform: ['ARM64_GENERIC'] as const,
 };
 
 const validProject1 = { name: 'proj1', template: 'app' as const, makeTool: 'make' as const };
 const validProject2 = { name: 'proj2', template: 'lib' as const, makeTool: 'make' as const };
-const validDevice = { name: 'board', ip: '192.168.1.100', platform: 'ARM64_GENERIC', username: 'root' };
+const validDevice = { name: 'board', ip: '192.168.1.100', platform: ['ARM64_GENERIC'], username: 'root' };
 
 describe('InitOrchestrator', () => {
   let reporter: ProgressReporter;

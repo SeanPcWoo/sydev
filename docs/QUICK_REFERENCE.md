@@ -70,6 +70,7 @@ sydev template apply --help
 - `upload` 上传多个项目时必须显式传 `--device`
 - `template apply` 的 `<source>` 可以是模板 ID，也可以是 JSON 文件路径
 - `workspace init --config file.json`、`project create --config file.json`、`device add --config file.json` 都可以只靠配置文件运行
+- 平台值不要手猜；完整列表见 [PLATFORMS.md](./PLATFORMS.md)
 
 ## 非交互常用写法
 

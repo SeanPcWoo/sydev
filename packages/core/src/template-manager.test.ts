@@ -40,7 +40,7 @@ describe('TemplateManager', () => {
     const workspaceContent = {
       cwd: '/tmp/ws',
       basePath: '/tmp/base',
-      platform: 'ARM64_GENERIC' as const,
+      platform: ['ARM64_GENERIC'] as const,
     };
 
     it('保存 workspace 模板后创建索引和内容文件', () => {
@@ -70,7 +70,7 @@ describe('TemplateManager', () => {
       const dev = manager.save('dev', '描述', 'device', {
         name: 'board',
         ip: '192.168.1.1',
-        platform: 'ARM64_GENERIC',
+        platform: ['ARM64_GENERIC'],
         username: 'root',
       });
       expect(dev.type).toBe('device');
@@ -78,7 +78,7 @@ describe('TemplateManager', () => {
       const full = manager.save('full', '描述', 'full', {
         workspace: workspaceContent,
         projects: [{ name: 'my-app', template: 'app' as const, makeTool: 'make' as const }],
-        devices: [{ name: 'board', ip: '192.168.1.1', platform: 'ARM64_GENERIC', username: 'root' }],
+        devices: [{ name: 'board', ip: '192.168.1.1', platform: ['ARM64_GENERIC'], username: 'root' }],
       });
       expect(full.type).toBe('full');
     });
@@ -95,7 +95,7 @@ describe('TemplateManager', () => {
     const workspaceContent = {
       cwd: '/tmp/ws',
       basePath: '/tmp/base',
-      platform: 'ARM64_GENERIC' as const,
+      platform: ['ARM64_GENERIC'] as const,
     };
 
     it('返回所有模板，按 updatedAt 降序排列', async () => {
@@ -134,7 +134,7 @@ describe('TemplateManager', () => {
     const workspaceContent = {
       cwd: '/tmp/ws',
       basePath: '/tmp/base',
-      platform: 'ARM64_GENERIC' as const,
+      platform: ['ARM64_GENERIC'] as const,
     };
 
     it('返回 { meta, content } 结构', () => {
@@ -158,7 +158,7 @@ describe('TemplateManager', () => {
     const workspaceContent = {
       cwd: '/tmp/ws',
       basePath: '/tmp/base',
-      platform: 'ARM64_GENERIC' as const,
+      platform: ['ARM64_GENERIC'] as const,
     };
 
     it('删除文件并从 index.json 移除条目', () => {
@@ -185,10 +185,10 @@ describe('TemplateManager', () => {
         workspace: {
           cwd: '/tmp/ws',
           basePath: '/tmp/base',
-          platform: 'ARM64_GENERIC',
+          platform: ['ARM64_GENERIC'],
         },
         projects: [{ name: 'my-app', template: 'app', makeTool: 'make' }],
-        devices: [{ name: 'board', ip: '192.168.1.1', platform: 'ARM64_GENERIC', username: 'root' }],
+        devices: [{ name: 'board', ip: '192.168.1.1', platform: ['ARM64_GENERIC'], username: 'root' }],
       };
       const result = fullConfigSchema.safeParse(config);
       expect(result.success).toBe(true);
@@ -199,7 +199,7 @@ describe('TemplateManager', () => {
         workspace: {
           cwd: '/tmp/ws',
           basePath: '/tmp/base',
-          platform: 'ARM64_GENERIC',
+          platform: ['ARM64_GENERIC'],
         },
       };
       const result = fullConfigSchema.safeParse(config);
@@ -211,7 +211,7 @@ describe('TemplateManager', () => {
         workspace: {
           cwd: '/tmp/ws',
           basePath: '/tmp/base',
-          platform: 'ARM64_GENERIC',
+          platform: ['ARM64_GENERIC'],
         },
       };
       const result = fullConfigSchema.parse(config);
